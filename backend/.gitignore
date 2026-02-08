@@ -1,0 +1,6 @@
+.env
+__pycache__/
+myenv/
+uploaded_contracts/*.pdf
+*.pyc
+.vscode/

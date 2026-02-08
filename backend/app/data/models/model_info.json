@@ -1,0 +1,11 @@
+{
+  "model_type": "XGBoost",
+  "feature_count": 35,
+  "classes": [
+    "HIGH",
+    "LOW",
+    "MEDIUM"
+  ],
+  "is_trained": true,
+  "model_path": "app/data/models/risk_model.pkl"
+}

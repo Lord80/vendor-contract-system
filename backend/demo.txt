@@ -1,0 +1,19 @@
+SELECT contract_name, status, risk_score FROM contracts;
+
+
+uvicorn app.main:app --reload
+
+chcp 65001
+psql -U postgres -d vendor_contract_db
+
+psql -U postgres -d vendor_contract_db --encoding=UTF8
+
+SET client_encoding TO 'UTF8';
+
+SELECT * FROM contracts;
+
+IT Service Agreement 2025
+2025-01-01
+2025-12-31
+
+npm run dev     (for frontend)
