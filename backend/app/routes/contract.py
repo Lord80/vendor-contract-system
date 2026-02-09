@@ -1,5 +1,5 @@
 import os
-from fastapi import APIRouter, UploadFile, File, Depends, HTTPException
+from fastapi import APIRouter, UploadFile, File, Depends, HTTPException, Form
 from sqlalchemy.orm import Session
 from app.database import get_db  # ✅ Imported correctly now
 from app.models.contract import Contract
@@ -33,10 +33,10 @@ except Exception as e:
 
 @router.post("/upload")
 async def upload_contract(
-    vendor_id: int,
-    contract_name: str,
-    start_date: str,
-    end_date: str,
+    vendor_id: int = Form(...),
+    contract_name: str = Form(...),
+    start_date: str = Form(...),
+    end_date: str = Form(...),
     file: UploadFile = File(...),
     db: Session = Depends(get_db)
 ):

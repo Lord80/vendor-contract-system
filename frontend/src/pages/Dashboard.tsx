@@ -1,184 +1,134 @@
-import { useEffect, useState } from "react";
-import { api } from "../api/api";
-import type { DashboardSummary, Vendor, Contract } from "../types";
+import { useEffect, useState } from 'react';
+import { api } from '../services/api';
+import { StatCard } from '../components/dashboard/StatCard';
+import { RiskBadge } from '../components/dashboard/RiskBadge';
+import type { DashboardSummary, Vendor, Contract } from '../types';
 
 export default function Dashboard() {
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
   const [vendors, setVendors] = useState<Vendor[]>([]);
   const [contracts, setContracts] = useState<Contract[]>([]);
-  const [alerts, setAlerts] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    api.getDashboardSummary().then(data => {
-        console.log("SUMMARY:", data);
-        setSummary(data);
-    });
+    async function loadData() {
+      try {
+        setLoading(true);
+        // Fetch all data in parallel for speed
+        const [summaryData, vendorsData, contractsData] = await Promise.all([
+          api.getDashboardSummary(),
+          api.getTopVendors(),
+          api.getAllContracts()
+        ]);
 
-    api.getTopVendors().then(data => {
-        console.log("VENDORS:", data);
-        setVendors(data);
-    });
+        setSummary(summaryData);
+        setVendors(vendorsData);
+        setContracts(contractsData);
+      } catch (err: any) {
+        console.error("Dashboard Error:", err);
+        setError("Failed to load dashboard data. Check backend connection.");
+      } finally {
+        setLoading(false);
+      }
+    }
 
-    api.getContracts().then(data => {
-        console.log("CONTRACTS:", data);
-        setContracts(data);
-    });
-
-    api.getAlerts().then(data => {
-        console.log("ALERTS:", data);
-        setAlerts(data.alerts);
-    });
+    loadData();
   }, []);
 
+  if (loading) return <div style={{ padding: 40, textAlign: "center" }}>Loading AI Insights...</div>;
+  if (error) return <div style={{ padding: 40, color: "var(--accent-danger)" }}>{error}</div>;
+
   return (
-    <div style={{ maxWidth: 1100, margin: "auto", padding: 24 }}>
-        <h1 style={{ fontSize: 34, fontWeight: 700, marginBottom: 24 }}>
-        📊 AI Vendor & Contract Dashboard
+    <div style={{ maxWidth: 1200, margin: "0 auto" }}>
+      {/* HEADER */}
+      <header style={{ marginBottom: "2rem" }}>
+        <h1 style={{ fontSize: "1.8rem", fontWeight: 700, marginBottom: "0.5rem" }}>
+          Executive Overview
         </h1>
+        <p style={{ color: "var(--text-secondary)" }}>
+          Real-time AI analysis of vendor performance and contract risk.
+        </p>
+      </header>
 
-        {/* SUMMARY CARDS */}
-        {summary && (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16, marginBottom: 32 }}>
-            <SummaryCard title="Total Contracts" value={summary.total_contracts} />
-            <SummaryCard title="Low Risk" value={summary.risk_distribution.LOW} color="green" />
-            <SummaryCard title="Medium Risk" value={summary.risk_distribution.MEDIUM} color="yellow" />
-            <SummaryCard title="High Risk" value={summary.risk_distribution.HIGH} color="red" />
+      {/* METRICS GRID */}
+      {summary && (
+        <div style={{ 
+          display: "grid", 
+          gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", 
+          gap: "1.5rem",
+          marginBottom: "2rem" 
+        }}>
+          <StatCard title="Total Contracts" value={summary.total_contracts} color="blue" />
+          <StatCard title="Low Risk" value={summary.risk_distribution.LOW} color="green" />
+          <StatCard title="Medium Risk" value={summary.risk_distribution.MEDIUM} color="yellow" />
+          <StatCard title="High Risk" value={summary.risk_distribution.HIGH} color="red" />
         </div>
-        )}
+      )}
 
-        {/* ALERTS */}
-        <Section title="🚨 Alerts">
-        {alerts.length === 0 ? (
-            <p style={{ color: "var(--muted)" }}>No alerts</p>
-        ) : (
-            <ul>
-            {alerts.map((a, i) => (
-                <li key={i} style={{ marginBottom: 8 }}>
-                {a.message}
-                </li>
+      <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: "2rem" }}>
+        
+        {/* LEFT COLUMN: CONTRACTS */}
+        <section>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
+            <h3 style={{ margin: 0 }}>Recent Contracts</h3>
+            <button className="badge" style={{ border: "1px solid var(--text-secondary)", cursor: "pointer" }}>View All</button>
+          </div>
+          
+          <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+            {contracts.slice(0, 5).map(contract => (
+              <div key={contract.id} className="card" style={{ padding: "1rem", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <div>
+                  <div style={{ fontWeight: 600, marginBottom: "0.25rem" }}>{contract.contract_name}</div>
+                  <div style={{ fontSize: "0.85rem", color: "var(--text-secondary)" }}>
+                    Vendor ID: {contract.vendor_id} • Expires: {contract.end_date}
+                  </div>
+                </div>
+                <div style={{ textAlign: "right" }}>
+                  <RiskBadge level={contract.risk_level} />
+                  <div style={{ fontSize: "0.75rem", marginTop: "0.25rem", color: "var(--text-secondary)" }}>
+                    Score: {contract.risk_score}/100
+                  </div>
+                </div>
+              </div>
             ))}
-            </ul>
-        )}
-        </Section>
+          </div>
+        </section>
 
-        {/* TOP VENDORS */}
-        <Section title="🏆 Top Vendors">
-        <table style={{ width: "100%", borderCollapse: "collapse" }}>
-            <thead>
-            <tr style={{ color: "var(--muted)", textAlign: "left" }}>
-                <th>Name</th>
-                <th>Score</th>
-                <th>Risk</th>
-            </tr>
-            </thead>
-            <tbody>
-            {vendors.map(v => (
-                <tr key={v.vendor_id}>
-                <td>{v.name}</td>
-                <td>{v.performance_score}</td>
-                <td><RiskBadge level={v.risk_level} /></td>
+        {/* RIGHT COLUMN: VENDORS */}
+        <section>
+          <h3 style={{ marginBottom: "1rem" }}>Top Vendors</h3>
+          <div className="card" style={{ padding: 0, overflow: "hidden" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
+              <thead style={{ background: "rgba(255,255,255,0.02)", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
+                <tr>
+                  <th style={{ padding: "1rem", fontSize: "0.75rem", color: "var(--text-secondary)" }}>NAME</th>
+                  <th style={{ padding: "1rem", fontSize: "0.75rem", color: "var(--text-secondary)" }}>SCORE</th>
                 </tr>
-            ))}
-            </tbody>
-        </table>
-        </Section>
+              </thead>
+              <tbody>
+                {vendors.map(vendor => (
+                  <tr key={vendor.vendor_id} style={{ borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
+                    <td style={{ padding: "1rem" }}>
+                      <div style={{ fontWeight: 500 }}>{vendor.name}</div>
+                      <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>{vendor.category}</div>
+                    </td>
+                    <td style={{ padding: "1rem" }}>
+                      <span style={{ 
+                        fontWeight: 700, 
+                        color: vendor.performance_score > 90 ? "var(--accent-success)" : "var(--accent-warning)" 
+                      }}>
+                        {vendor.performance_score.toFixed(1)}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
 
-        {/* CONTRACTS */}
-        <Section title="📄 Contracts">
-        {contracts.length === 0 ? (
-        <p style={{ color: "var(--muted)" }}>No contracts found</p>
-        ) : (
-        contracts.map(c => (
-            <div
-            key={c.id}
-            style={{
-                padding: 12,
-                borderRadius: 8,
-                background: "#020617",
-                marginBottom: 12
-            }}
-            >
-            <strong>{c.contract_name}</strong>
-            <span style={{ marginLeft: 10 }}>
-                <RiskBadge level={c.risk_level} />
-            </span>
-            <p style={{ marginTop: 8, color: "var(--muted)" }}>
-                {c.summary}
-            </p>
-            </div>
-        ))
-        )}
-        </Section>
+      </div>
     </div>
-    );
-}
-
-function Section({ title, children }: { title: string; children: any }) {
-  return (
-    <div
-      style={{
-        background: "var(--card)",
-        padding: 16,
-        borderRadius: 12,
-        marginBottom: 32
-      }}
-    >
-      <h2 style={{ marginBottom: 12 }}>{title}</h2>
-      {children}
-    </div>
-  );
-}
-
-function SummaryCard({
-  title,
-  value,
-  color
-}: {
-  title: string;
-  value: number;
-  color?: "green" | "yellow" | "red";
-}) {
-  const colorMap: any = {
-    green: "var(--green)",
-    yellow: "var(--yellow)",
-    red: "var(--red)"
-  };
-
-  return (
-    <div
-      style={{
-        background: "var(--card)",
-        padding: 16,
-        borderRadius: 12
-      }}
-    >
-      <p style={{ color: "var(--muted)", marginBottom: 8 }}>{title}</p>
-      <h2 style={{ color: color ? colorMap[color] : "var(--text)" }}>
-        {value}
-      </h2>
-    </div>
-  );
-}
-
-function RiskBadge({ level }: { level: string }) {
-  const colorMap: any = {
-    LOW: "var(--green)",
-    MEDIUM: "var(--yellow)",
-    HIGH: "var(--red)"
-  };
-
-  return (
-    <span
-      style={{
-        background: colorMap[level] || "#64748b",
-        color: "#000",
-        padding: "2px 10px",
-        borderRadius: 999,
-        fontSize: 12,
-        fontWeight: 600
-      }}
-    >
-      {level}
-    </span>
   );
 }

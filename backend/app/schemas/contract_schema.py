@@ -18,10 +18,12 @@ class ContractResponse(ContractCreate):
 
 class ContractListResponse(BaseModel):
     id: int
+    vendor_id: int
     contract_name: str
-    risk_level: Optional[str] = "UNKNOWN" # ✅ Made Optional
-    risk_score: Optional[int] = 0         # ✅ Made Optional
-    summary: Optional[str] = "No summary available" # ✅ Made Optional with default
+    status: Optional[str] = "ACTIVE"
+    risk_level: Optional[str] = "UNKNOWN"
+    risk_score: Optional[int] = 0
+    summary: Optional[str] = "No summary available"
 
     class Config:
         from_attributes = True

@@ -1,20 +1,47 @@
 :root {
-  --bg: #0f172a;          /* dark slate */
-  --card: #1e293b;        /* card background */
-  --text: #e5e7eb;        /* primary text */
-  --muted: #9ca3af;       /* secondary text */
-  --green: #22c55e;
-  --yellow: #eab308;
-  --red: #ef4444;
+  --bg-dark: #0f172a;       /* Deep Slate */
+  --bg-card: #1e293b;       /* Lighter Slate */
+  --bg-hover: #334155;
+  
+  --text-primary: #f8fafc;
+  --text-secondary: #94a3b8;
+  
+  --accent-primary: #3b82f6; /* Blue */
+  --accent-danger: #ef4444;  /* Red */
+  --accent-warning: #f59e0b; /* Amber */
+  --accent-success: #10b981; /* Emerald */
+
+  --radius: 12px;
+  --shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
 }
 
-* {
-  box-sizing: border-box;
-}
+* { box-sizing: border-box; }
 
 body {
   margin: 0;
-  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
-  background-color: var(--bg);
-  color: var(--text);
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  background-color: var(--bg-dark);
+  color: var(--text-primary);
+  -webkit-font-smoothing: antialiased;
 }
+
+/* Reusable Utility Classes */
+.card {
+  background: var(--bg-card);
+  border-radius: var(--radius);
+  padding: 1.5rem;
+  box-shadow: var(--shadow);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.badge {
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.badge.HIGH { background: rgba(239, 68, 68, 0.2); color: var(--accent-danger); }
+.badge.MEDIUM { background: rgba(245, 158, 11, 0.2); color: var(--accent-warning); }
+.badge.LOW { background: rgba(16, 185, 129, 0.2); color: var(--accent-success); }
