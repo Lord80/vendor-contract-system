@@ -1,8 +1,10 @@
 import os
 from fastapi import APIRouter, UploadFile, File, Depends, HTTPException, Form
 from sqlalchemy.orm import Session
-from app.database import get_db  # ✅ Imported correctly now
+from app.database import get_db
 from app.models.contract import Contract
+from app.routes.auth import get_current_user  
+from app.models.user import User
 
 # --- Advanced AI Services ---
 from app.services.pdf_service import extract_text_from_pdf
@@ -137,9 +139,28 @@ def get_alerts(db: Session = Depends(get_db)):
     alerts = get_contract_alerts(contracts)
     return {"total_alerts": len(alerts), "alerts": alerts}
 
+# @router.get("/", response_model=list[ContractListResponse])
+# def list_contracts(db: Session = Depends(get_db)):
+#     return db.query(Contract).all()
+
 @router.get("/", response_model=list[ContractListResponse])
-def list_contracts(db: Session = Depends(get_db)):
-    return db.query(Contract).all()
+def read_contracts(
+    skip: int = 0, 
+    limit: int = 100, 
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user) # <--- Add this dependency
+):
+    # If user is a VENDOR, only show their own contracts
+    if current_user.role == "vendor":
+        if not current_user.vendor_id:
+            return [] # Should not happen, but safety check
+        contracts = db.query(Contract).filter(Contract.vendor_id == current_user.vendor_id).offset(skip).limit(limit).all()
+    
+    # If Admin/Manager, show ALL contracts
+    else:
+        contracts = db.query(Contract).offset(skip).limit(limit).all()
+        
+    return contracts
 
 @router.get("/dashboard/summary")
 def dashboard_summary(db: Session = Depends(get_db)):

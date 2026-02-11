@@ -1,15 +1,18 @@
 import { useEffect, useState } from 'react';
 import { api } from '../services/api';
+import { useAuth } from '../context/AuthContext';
 import { StatCard } from '../components/dashboard/StatCard';
 import { RiskBadge } from '../components/dashboard/RiskBadge';
 import type { DashboardSummary, Vendor, Contract } from '../types';
 
 export default function Dashboard() {
+  const { user } = useAuth();
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
   const [vendors, setVendors] = useState<Vendor[]>([]);
   const [contracts, setContracts] = useState<Contract[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isTraining, setIsTraining] = useState(false);
 
   useEffect(() => {
     async function loadData() {
@@ -36,19 +39,55 @@ export default function Dashboard() {
     loadData();
   }, []);
 
+  // Function to trigger AI Retraining
+  const handleRetrain = async () => {
+    if (!confirm("Are you sure? This will retrain the risk model on all current contracts.")) return;
+    setIsTraining(true);
+    try {
+      await api.trainModel();
+      alert("AI Model Retraining Started! Check backend logs for progress.");
+    } catch (err) {
+      alert("Failed to start training.");
+    } finally {
+      setIsTraining(false);
+    }
+  };
+
   if (loading) return <div style={{ padding: 40, textAlign: "center" }}>Loading AI Insights...</div>;
   if (error) return <div style={{ padding: 40, color: "var(--accent-danger)" }}>{error}</div>;
 
   return (
     <div style={{ maxWidth: 1200, margin: "0 auto" }}>
       {/* HEADER */}
-      <header style={{ marginBottom: "2rem" }}>
-        <h1 style={{ fontSize: "1.8rem", fontWeight: 700, marginBottom: "0.5rem" }}>
-          Executive Overview
-        </h1>
-        <p style={{ color: "var(--text-secondary)" }}>
-          Real-time AI analysis of vendor performance and contract risk.
-        </p>
+      <header style={{ marginBottom: "2rem", display: "flex", justifyContent: "space-between", alignItems: "end" }}>
+        <div>
+          <h1 style={{ fontSize: "1.8rem", fontWeight: 700, marginBottom: "0.5rem" }}>
+            Executive Overview
+          </h1>
+          <p style={{ color: "var(--text-secondary)" }}>
+            Real-time AI analysis of vendor performance and contract risk.
+          </p>
+        </div>
+
+        {/* 🔒 RBAC: ONLY SHOW TO ADMINS */}
+        {user?.role === 'admin' && (
+          <button 
+            onClick={handleRetrain}
+            disabled={isTraining}
+            style={{ 
+              background: "rgba(59, 130, 246, 0.1)", 
+              color: "#3b82f6", 
+              border: "1px solid #3b82f6", 
+              padding: "0.5rem 1rem", 
+              borderRadius: "6px", 
+              cursor: isTraining ? "not-allowed" : "pointer",
+              fontWeight: 600,
+              fontSize: "0.85rem"
+            }}
+          >
+            {isTraining ? "Training AI..." : "⚡ Retrain AI Model"}
+          </button>
+        )}
       </header>
 
       {/* METRICS GRID */}

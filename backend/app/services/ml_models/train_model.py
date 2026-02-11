@@ -1,4 +1,3 @@
-# backend/app/services/ml_models/train_model.py
 import asyncio
 from sqlalchemy.orm import Session
 from app.database import SessionLocal

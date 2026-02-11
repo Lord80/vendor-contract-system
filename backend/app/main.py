@@ -2,8 +2,14 @@ from fastapi import FastAPI
 from app.routes import vendor, contract
 from app.routes.similarity_routes import router as similarity_router
 from app.routes.ml_routes import router as ml_router
+from app.routes import auth
+from app.models import user
 from fastapi.middleware.cors import CORSMiddleware
+from app.database import engine, Base
 from app.routes.forecasting_routes import router as forecasting_router
+
+
+Base.metadata.create_all(bind=engine)
 
 app = FastAPI(
     title="AI Powered Vendor & Contract Management System",
@@ -20,6 +26,7 @@ app.add_middleware(
 )
 
 # Include all routers
+app.include_router(auth.router)
 app.include_router(vendor.router)
 app.include_router(contract.router)
 app.include_router(similarity_router)

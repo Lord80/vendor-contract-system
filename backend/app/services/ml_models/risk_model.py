@@ -1,4 +1,3 @@
-# backend/app/services/ml_models/risk_model.py
 import xgboost as xgb
 import pandas as pd
 import numpy as np

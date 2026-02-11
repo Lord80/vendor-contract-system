@@ -80,7 +80,7 @@ class LegalBERTClassifier:
             for clause_type, keywords in keyword_map.items():
                 if any(keyword in sentence_lower for keyword in keywords):
                     results[clause_type].append(sentence)
-                    break  # Only assign to first matching type
+                    break
         
         return results
     

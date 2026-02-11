@@ -162,7 +162,7 @@ class ContractSimilarityEngine:
         similarities = 1 - (distances[0] / 2)
         
         results = []
-        seen_texts = set()  # Avoid duplicates
+        seen_texts = set() 
         
         for idx, similarity in zip(indices[0], similarities):
             if idx >= len(self.clause_texts) or idx < 0:

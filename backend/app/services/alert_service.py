@@ -16,7 +16,6 @@ def get_contract_alerts(contracts, days_threshold=30):
                     "message": f"Contract '{contract.contract_name}' expires in {days_left} days"
                 })
 
-        # High-risk contract alert
         if contract.risk_level == "HIGH":
             alerts.append({
                 "type": "HIGH_RISK",

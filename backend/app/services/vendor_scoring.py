@@ -17,7 +17,7 @@ def calculate_vendor_score(contracts: list):
     else:
         vendor_risk = "LOW"
 
-    # Performance score (inverse of risk)
+    # Performance score
     performance_score = max(0, 100 - avg_risk)
 
     return {
