@@ -12,7 +12,7 @@ export interface Contract {
   vendor_id: number;
   contract_name: string;
   start_date: string;
-  end_date: string;
+  end_date?: string;
   status: string;
   risk_score: number;
   risk_level: "LOW" | "MEDIUM" | "HIGH" | "UNKNOWN";

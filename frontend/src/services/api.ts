@@ -58,6 +58,27 @@ export const api = {
     return handleResponse<any>(response);
   },
 
+  updateContractStatus: async (id: number, status: string, newDate?: string) => {
+    // 1. Prepare the payload
+    const payload = {
+      status: status,
+      new_end_date: newDate // This must match the Pydantic field name exactly
+    };
+    
+    console.log("Sending Update Payload:", payload); // Debug log
+
+    const response = await fetch(`${API_BASE}/contracts/${id}/status`, {
+      method: 'PATCH',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ 
+        status: status, 
+        // 🚨 CRITICAL: The key on the left MUST be "new_end_date" to match Python
+        new_end_date: newDate 
+      }),
+    });
+    return handleResponse<Contract>(response);
+  },
+
   // --- Dashboard ---
   getDashboardSummary: () => 
     fetch(`${API_BASE}/contracts/dashboard/summary`, {
@@ -80,6 +101,18 @@ export const api = {
     fetch(`${API_BASE}/contracts/`, {
       headers: getAuthHeaders() // <--- Added Token!! This fixes your 401 error
     }).then(handleResponse<Contract[]>),
+
+  getAllUsers: () => 
+    fetch(`${API_BASE}/auth/users/`, {
+      headers: getAuthHeaders()
+    }).then(handleResponse<any[]>), // Replace 'any' with User type if you have it
+
+  // Admin: Delete User
+  deleteUser: (id: number) => 
+    fetch(`${API_BASE}/auth/users/${id}`, {
+      method: 'DELETE',
+      headers: getAuthHeaders()
+    }).then(handleResponse),
   
   uploadContract: async (formData: FormData) => {
     const response = await fetch(`${API_BASE}/contracts/upload`, {

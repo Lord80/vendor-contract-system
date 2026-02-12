@@ -23,3 +23,7 @@ class User(Base):
     
     # Relationships
     vendor_profile = relationship("Vendor", backref="users")
+
+    company_id = Column(Integer, ForeignKey("companies.id"), nullable=True) # Nullable for Super Admin
+    
+    company = relationship("Company", back_populates="users")

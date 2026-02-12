@@ -6,39 +6,46 @@ import Login from "./pages/Login";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import Register from "./pages/Register";
 import VendorDashboard from "./pages/VendorDashboard";
+import AdminUsers from "./pages/AdminUsers"; // ✅ 1. Import Admin Page
 
 const AppContent = () => {
   const { isAuthenticated, user, logout } = useAuth();
+  
+  // View state: 'dashboard', 'contracts', 'compare', 'users'
   const [currentView, setCurrentView] = useState("dashboard");
   const [isRegistering, setIsRegistering] = useState(false);
 
   // If not logged in, decide between Login or Register
   if (!isAuthenticated) {
-    return isRegistering 
-      ? <Register onSwitchToLogin={() => setIsRegistering(false)} />
-      : <Login onSwitchToRegister={() => setIsRegistering(true)} />;
+    if (isRegistering) {
+      return <Register onSwitchToLogin={() => setIsRegistering(false)} />;
+    }
+    return <Login onSwitchToRegister={() => setIsRegistering(true)} />;
   }
 
-  // Render content based on user role
+  // Render content based on user role & current view
   const renderContent = () => {
+    // Vendors ALWAYS see Vendor Dashboard
     if (user?.role === 'vendor') {
       return <VendorDashboard />;
     }
 
-    // Admins/Managers see the full suite
+    // Admins & Managers view switching
     switch (currentView) {
       case 'dashboard': return <Dashboard />;
       case 'contracts': return <Contracts />;
       case 'compare': return <Compare />;
+      case 'users': return <AdminUsers />; // ✅ 2. Render Admin Page
       default: return <Dashboard />;
     }
   };
 
-  // Determine if user should see navigation
+  // Vendors don't see the main nav
   const showNavigation = user?.role !== 'vendor';
 
   return (
     <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
+      {/* NAVIGATION BAR */}
       <nav style={{ 
         borderBottom: "1px solid rgba(255,255,255,0.1)", 
         padding: "1rem 2rem", 
@@ -64,7 +71,8 @@ const AppContent = () => {
                   border: "none", 
                   color: currentView === "dashboard" ? "var(--accent-primary)" : "var(--text-secondary)", 
                   cursor: "pointer", 
-                  fontWeight: 500 
+                  fontWeight: 500,
+                  fontSize: "1rem"
                 }}
               >
                 Dashboard
@@ -76,7 +84,8 @@ const AppContent = () => {
                   border: "none", 
                   color: currentView === "contracts" ? "var(--accent-primary)" : "var(--text-secondary)", 
                   cursor: "pointer", 
-                  fontWeight: 500 
+                  fontWeight: 500,
+                  fontSize: "1rem"
                 }}
               >
                 Contracts
@@ -88,16 +97,35 @@ const AppContent = () => {
                   border: "none", 
                   color: currentView === "compare" ? "var(--accent-primary)" : "var(--text-secondary)", 
                   cursor: "pointer", 
-                  fontWeight: 500 
+                  fontWeight: 500,
+                  fontSize: "1rem"
                 }}
               >
                 Compare
               </button>
+
+              {/* ✅ 3. ADMIN-ONLY BUTTON */}
+              {user?.role === 'admin' && (
+                <button 
+                  onClick={() => setCurrentView("users")} 
+                  style={{ 
+                    background: "none", 
+                    border: "none", 
+                    color: currentView === "users" ? "#a855f7" : "var(--text-secondary)", // Purple for Admin
+                    cursor: "pointer", 
+                    fontWeight: 600,
+                    fontSize: "1rem"
+                  }}
+                >
+                  👮‍♂️ Users
+                </button>
+              )}
             </div>
           ) : (
             <div></div> // Spacer for vendors
           )}
           
+          {/* USER PROFILE & LOGOUT */}
           <div style={{ 
             paddingLeft: "2rem", 
             borderLeft: showNavigation ? "1px solid #333" : "none", 
@@ -105,8 +133,9 @@ const AppContent = () => {
             alignItems: "center", 
             gap: "1rem" 
           }}>
-            <span style={{ fontSize: "0.9rem", color: "white" }}>
-              {user?.full_name} <span style={{ opacity: 0.5 }}>({user?.role})</span>
+            <span style={{ fontSize: "0.9rem", color: "white", textAlign: "right" }}>
+              <div style={{fontWeight: "bold"}}>{user?.full_name}</div>
+              <div style={{ opacity: 0.5, fontSize: "0.8rem", textTransform: "uppercase" }}>{user?.role}</div>
             </span>
             <button 
               onClick={logout} 
@@ -126,6 +155,7 @@ const AppContent = () => {
         </div>
       </nav>
 
+      {/* MAIN CONTENT AREA */}
       <main style={{ flex: 1, padding: "2rem" }}>
         {renderContent()}
       </main>

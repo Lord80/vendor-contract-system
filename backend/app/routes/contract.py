@@ -1,10 +1,12 @@
 import os
-from fastapi import APIRouter, UploadFile, File, Depends, HTTPException, Form
+from fastapi import APIRouter, UploadFile, File, Depends, HTTPException, Form, Body
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models.contract import Contract
 from app.routes.auth import get_current_user  
 from app.models.user import User
+from pydantic import BaseModel
+from typing import Optional
 
 # --- Advanced AI Services ---
 from app.services.pdf_service import extract_text_from_pdf
@@ -180,4 +182,31 @@ def get_contract(contract_id: int, db: Session = Depends(get_db)):
     if not contract:
         # Add a custom error response that frontend can handle
         return {"error": "Contract not found"} 
+    return contract
+
+class ContractUpdateSchema(BaseModel):
+    status: str
+    new_end_date: Optional[str] = None
+
+@router.patch("/{contract_id}/status")
+def update_contract_status(
+    contract_id: int, 
+    update_data: ContractUpdateSchema,  # <--- Use the schema here
+    db: Session = Depends(get_db)
+):
+    print(f"Received Update: {update_data.dict()}") # Debugging Log
+
+    contract = db.query(Contract).filter(Contract.id == contract_id).first()
+    if not contract:
+        raise HTTPException(status_code=404, detail="Contract not found")
+    
+    # Update Status
+    contract.status = update_data.status.upper()
+    
+    # Update Date (Only if RENEWED and date is provided)
+    if update_data.status.upper() == "RENEWED" and update_data.new_end_date:
+        contract.end_date = update_data.new_end_date
+    
+    db.commit()
+    db.refresh(contract)
     return contract

@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel,ConfigDict
 from typing import Optional, List, Dict, Any
 from datetime import date
 
@@ -24,6 +24,7 @@ class ContractListResponse(BaseModel):
     risk_level: Optional[str] = "UNKNOWN"
     risk_score: Optional[int] = 0
     summary: Optional[str] = "No summary available"
+    end_date: Optional[Any] = None
 
     class Config:
         from_attributes = True
