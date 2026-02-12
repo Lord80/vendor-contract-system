@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from app.routes import vendor, contract
+from app.routes import auth, contract, vendor, company
 from app.routes.similarity_routes import router as similarity_router
 from app.routes.ml_routes import router as ml_router
 from app.routes import auth
@@ -29,6 +29,7 @@ app.add_middleware(
 app.include_router(auth.router)
 app.include_router(vendor.router)
 app.include_router(contract.router)
+app.include_router(company.router)
 app.include_router(similarity_router)
 app.include_router(ml_router)
 app.include_router(forecasting_router)

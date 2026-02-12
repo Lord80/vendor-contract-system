@@ -1,25 +1,61 @@
+// ✅ 1. USER INTERFACE (Fixes the Role Error in App.tsx)
+export interface User {
+  id: number;
+  email: string;
+  full_name: string;
+  is_active: boolean;
+  // This union type allows all your new roles
+  role: 'super_admin' | 'company_admin' | 'admin' | 'manager' | 'vendor';
+  
+  // Optional links for specific roles
+  vendor_id?: number | null;
+  company_id?: number | null; 
+}
+
+// ✅ 2. COMPANY INTERFACE (For Super Admin Dashboard)
+export interface Company {
+  id: number;
+  name: string;
+  subscription_status: string;
+  created_at: string;
+}
+
+// ✅ 3. VENDOR INTERFACE
 export interface Vendor {
-  vendor_id: number;
+  id: number;          // Backend uses 'id'
   name: string;
   category: string;
   email: string;
   performance_score: number;
   risk_level: "LOW" | "MEDIUM" | "HIGH" | "UNKNOWN";
+  company_id?: number | null;
 }
 
+// ✅ 4. CONTRACT INTERFACE (Updated for Multi-Tenancy & Extraction)
 export interface Contract {
   id: number;
   vendor_id: number;
+  company_id?: number | null; // Multi-tenant field
+  
   contract_name: string;
   start_date: string;
-  end_date?: string;
+  end_date?: string | null;   // Allow null from backend
   status: string;
+  
   risk_score: number;
   risk_level: "LOW" | "MEDIUM" | "HIGH" | "UNKNOWN";
   summary: string;
-  risk_reasons?: string[]; // Optional, from XGBoost
+  risk_reasons?: string[];    // Optional, from XGBoost
+  
+  // For the "Extracted Entities" card
+  entities?: {
+    dates: string[];
+    money: string[];
+    organizations: string[];
+  };
 }
 
+// ✅ 5. DASHBOARD & ANALYTICS
 export interface DashboardSummary {
   total_contracts: number;
   risk_distribution: {

@@ -7,6 +7,7 @@ class UserRole(str, enum.Enum):
     ADMIN = "admin"
     MANAGER = "manager"
     VENDOR = "vendor"
+    SUPER_ADMIN = "super_admin"
 
 class User(Base):
     __tablename__ = "users"
@@ -24,6 +25,6 @@ class User(Base):
     # Relationships
     vendor_profile = relationship("Vendor", backref="users")
 
-    company_id = Column(Integer, ForeignKey("companies.id"), nullable=True) # Nullable for Super Admin
+    company_id = Column(Integer, ForeignKey("companies.id"), nullable=True)
     
     company = relationship("Company", back_populates="users")

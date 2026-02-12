@@ -42,38 +42,38 @@ async def upload_contract(
     start_date: str = Form(...),
     end_date: str = Form(...),
     file: UploadFile = File(...),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user) # ✅ 1. Get the logged-in user
 ):
     """
     Uploads a PDF, extracts text, runs AI analysis (LegalBERT + XGBoost), 
-    and saves the result.
+    and saves the result linked to the user's company.
     """
-    # 1. Save PDF locally
+    
+    # --- [Existing Logic: Save PDF] ---
     file_path = os.path.join(UPLOAD_DIR, file.filename)
     with open(file_path, "wb") as f:
         f.write(await file.read())
 
-    # 2. Extract Text & Entities
+    # --- [Existing Logic: Extract Text] ---
     extracted_text = extract_text_from_pdf(file_path)
     entities = extract_entities(extracted_text)
 
     if not extracted_text.strip():
         raise HTTPException(status_code=400, detail="Could not extract text from PDF.")
 
-    # 3. AI Clause Extraction (LegalBERT)
+    # --- [Existing Logic: AI Clause Extraction] ---
     if nlp_classifier:
         clauses = nlp_classifier.classify_clauses(extracted_text)
     else:
-        # Fallback if model failed to load (prevents crash)
         clauses = {} 
 
-    # 4. AI Risk Analysis (XGBoost)
+    # --- [Existing Logic: AI Risk Analysis] ---
     risk_score = 0
     risk_level = "UNKNOWN"
     risk_reasons = []
 
     if risk_model:
-        # Prepare data for the model
         contract_data_for_ml = {
             "raw_text": extracted_text,
             "extracted_clauses": clauses,
@@ -83,13 +83,11 @@ async def upload_contract(
             "end_date": end_date
         }
         
-        # Predict
         try:
             risk_result = risk_model.predict(contract_data_for_ml)
             risk_level = risk_result["predicted_risk_level"]
             risk_score = int(risk_result["confidence"] * 100)
             
-            # Extract top risk factors for UI
             if "top_contributing_features" in risk_result:
                 risk_reasons = [
                     f['feature'] for f in risk_result["top_contributing_features"]
@@ -97,7 +95,7 @@ async def upload_contract(
         except Exception as e:
             print(f"Risk prediction failed: {e}")
 
-    # 5. Generate Summary
+    # --- [Existing Logic: Generate Summary] ---
     summary = generate_contract_summary(
         contract_name=contract_name,
         entities=entities,
@@ -105,9 +103,15 @@ async def upload_contract(
         risk_level=risk_level
     )
 
-    # 6. Save to Database
+    # --- [Security Logic: Determine Vendor ID] ---
+    # If a Vendor is uploading, force the ID to be their own (prevent spoofing)
+    final_vendor_id = vendor_id
+    if current_user.role == "vendor":
+        final_vendor_id = current_user.vendor_id
+
+    # --- [Updated Logic: Save to Database] ---
     contract = Contract(
-        vendor_id=vendor_id,
+        vendor_id=final_vendor_id,
         contract_name=contract_name,
         start_date=start_date,
         end_date=end_date,
@@ -118,7 +122,10 @@ async def upload_contract(
         risk_score=risk_score,
         risk_level=risk_level,
         risk_reasons=risk_reasons,
-        status="ACTIVE"
+        status="ACTIVE",
+        
+        # ✅ 2. KEY CHANGE: Link Contract to the User's Company
+        company_id=current_user.company_id 
     )
 
     db.add(contract)
@@ -146,23 +153,21 @@ def get_alerts(db: Session = Depends(get_db)):
 #     return db.query(Contract).all()
 
 @router.get("/", response_model=list[ContractListResponse])
-def read_contracts(
-    skip: int = 0, 
-    limit: int = 100, 
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user) # <--- Add this dependency
-):
-    # If user is a VENDOR, only show their own contracts
-    if current_user.role == "vendor":
-        if not current_user.vendor_id:
-            return [] # Should not happen, but safety check
-        contracts = db.query(Contract).filter(Contract.vendor_id == current_user.vendor_id).offset(skip).limit(limit).all()
+def read_contracts(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     
-    # If Admin/Manager, show ALL contracts
-    else:
-        contracts = db.query(Contract).offset(skip).limit(limit).all()
+    # 👑 Super Admin: See ALL contracts
+    if current_user.role == "super_admin":
+        return db.query(Contract).all()
+
+    # 🏢 Company Admin/Manager: See ONLY their company's contracts
+    if current_user.company_id:
+        return db.query(Contract).filter(Contract.company_id == current_user.company_id).all()
+
+    # 🛑 Vendor: See ONLY their specific contracts (Existing logic)
+    if current_user.role == "vendor":
+        return db.query(Contract).filter(Contract.vendor_id == current_user.vendor_id).all()
         
-    return contracts
+    return []
 
 @router.get("/dashboard/summary")
 def dashboard_summary(db: Session = Depends(get_db)):

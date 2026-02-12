@@ -1,10 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-
-interface User {
-  email: string;
-  full_name: string;
-  role: 'admin' | 'manager' | 'vendor';
-}
+// ✅ IMPORT the correct User type from your types file
+import type { User } from '../types'; 
 
 interface AuthContextType {
   user: User | null;

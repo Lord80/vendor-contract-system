@@ -1,23 +1,27 @@
-from sqlalchemy import Column, Integer, String, Date, Text, ForeignKey, JSON
+from sqlalchemy import Column, Integer, String, Date, Text, Float, ForeignKey, JSON
+from sqlalchemy.orm import relationship
 from app.database import Base
 
 class Contract(Base):
     __tablename__ = "contracts"
 
     id = Column(Integer, primary_key=True, index=True)
-    vendor_id = Column(Integer, ForeignKey("vendors.id"))
-
     contract_name = Column(String, index=True)
-    start_date = Column(Date)
-    end_date = Column(Date)
-
-    raw_text = Column(Text)
-
-    extracted_clauses = Column(JSON)
-    entities = Column(JSON)
-    summary = Column(Text)
-    risk_score = Column(Integer)
-    risk_level = Column(String)
-    risk_reasons = Column(JSON)
-
+    vendor_id = Column(Integer, ForeignKey("vendors.id"))
+    
+    # ✅ NEW: Multi-Tenant Link
+    company_id = Column(Integer, ForeignKey("companies.id"), nullable=True)
+    
+    # Existing fields
+    start_date = Column(Date, nullable=True)
+    end_date = Column(Date, nullable=True)
+    raw_text = Column(Text, nullable=True)
+    extracted_clauses = Column(JSON, nullable=True)
+    entities = Column(JSON, nullable=True)
+    summary = Column(Text, nullable=True)
+    risk_score = Column(Integer, default=0)
+    risk_level = Column(String, default="LOW")
+    risk_reasons = Column(JSON, nullable=True)
     status = Column(String, default="ACTIVE")
+
+    company = relationship("Company", back_populates="contracts")

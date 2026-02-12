@@ -6,7 +6,8 @@ import Login from "./pages/Login";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import Register from "./pages/Register";
 import VendorDashboard from "./pages/VendorDashboard";
-import AdminUsers from "./pages/AdminUsers"; // ✅ 1. Import Admin Page
+import AdminUsers from "./pages/AdminUsers";
+import SuperAdminDashboard from "./pages/SuperAdminDashboard";
 
 const AppContent = () => {
   const { isAuthenticated, user, logout } = useAuth();
@@ -25,17 +26,20 @@ const AppContent = () => {
 
   // Render content based on user role & current view
   const renderContent = () => {
-    // Vendors ALWAYS see Vendor Dashboard
+    // 🏢 Vendor View (Vendors have a completely different UI)
     if (user?.role === 'vendor') {
       return <VendorDashboard />;
     }
 
-    // Admins & Managers view switching
+    // 🔀 MAIN NAVIGATION SWITCH
     switch (currentView) {
-      case 'dashboard': return <Dashboard />;
+      case 'dashboard': 
+        // ✅ FIX: If Super Admin, show THEIR dashboard. Otherwise show standard dashboard.
+        return user?.role === 'super_admin' ? <SuperAdminDashboard /> : <Dashboard />;
+        
       case 'contracts': return <Contracts />;
       case 'compare': return <Compare />;
-      case 'users': return <AdminUsers />; // ✅ 2. Render Admin Page
+      case 'users': return <AdminUsers />; 
       default: return <Dashboard />;
     }
   };
@@ -90,28 +94,32 @@ const AppContent = () => {
               >
                 Contracts
               </button>
-              <button 
-                onClick={() => setCurrentView("compare")} 
-                style={{ 
-                  background: "none", 
-                  border: "none", 
-                  color: currentView === "compare" ? "var(--accent-primary)" : "var(--text-secondary)", 
-                  cursor: "pointer", 
-                  fontWeight: 500,
-                  fontSize: "1rem"
-                }}
-              >
-                Compare
-              </button>
+              
+              {/* ❌ HIDE COMPARE BUTTON FOR SUPER ADMIN */}
+              {user?.role !== 'super_admin' && (
+                <button 
+                    onClick={() => setCurrentView("compare")} 
+                    style={{ 
+                    background: "none", 
+                    border: "none", 
+                    color: currentView === "compare" ? "var(--accent-primary)" : "var(--text-secondary)", 
+                    cursor: "pointer", 
+                    fontWeight: 500,
+                    fontSize: "1rem"
+                    }}
+                >
+                    Compare
+                </button>
+              )}
 
-              {/* ✅ 3. ADMIN-ONLY BUTTON */}
+              {/* Admin-Only Users Button */}
               {user?.role === 'admin' && (
                 <button 
                   onClick={() => setCurrentView("users")} 
                   style={{ 
                     background: "none", 
                     border: "none", 
-                    color: currentView === "users" ? "#a855f7" : "var(--text-secondary)", // Purple for Admin
+                    color: currentView === "users" ? "#a855f7" : "var(--text-secondary)", 
                     cursor: "pointer", 
                     fontWeight: 600,
                     fontSize: "1rem"

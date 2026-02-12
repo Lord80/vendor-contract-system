@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
-import { api } from '../services/api';
-import { useNavigate } from 'react-router-dom'; // We'll simulate navigation since we aren't using Router yet
+import { api } from '../services/api'; // We'll simulate navigation since we aren't using Router yet
 import type { Vendor } from '../types';
 
 export default function Register({ onSwitchToLogin }: { onSwitchToLogin: () => void }) {

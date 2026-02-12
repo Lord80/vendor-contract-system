@@ -113,6 +113,18 @@ export const api = {
       method: 'DELETE',
       headers: getAuthHeaders()
     }).then(handleResponse),
+
+  getAllCompanies: () => 
+    fetch(`${API_BASE}/companies/`, {
+      headers: getAuthHeaders()
+    }).then(handleResponse<any[]>),
+
+  createCompany: (data: any) => 
+    fetch(`${API_BASE}/companies/`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(data)
+    }).then(handleResponse),
   
   uploadContract: async (formData: FormData) => {
     const response = await fetch(`${API_BASE}/contracts/upload`, {
