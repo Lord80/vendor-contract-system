@@ -1,26 +1,38 @@
 import { useState, useEffect } from 'react';
-import { api } from '../services/api'; // We'll simulate navigation since we aren't using Router yet
-import type { Vendor } from '../types';
+import { api } from '../services/api';
+import type { Vendor, Company } from '../types';
 
 export default function Register({ onSwitchToLogin }: { onSwitchToLogin: () => void }) {
   const [formData, setFormData] = useState({
     full_name: '',
     email: '',
     password: '',
-    role: 'manager', // Default role
-    vendor_id: ''
+    role: 'manager', // Default
+    vendor_id: '',
+    company_id: ''   // ✅ New field
   });
   
   const [vendors, setVendors] = useState<Vendor[]>([]);
+  const [companies, setCompanies] = useState<Company[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
 
-  // Load vendors if the user selects "vendor" role
   useEffect(() => {
-    if (formData.role === 'vendor') {
-      api.getAllVendors().then(setVendors).catch(console.error);
+    async function fetchData() {
+      try {
+        if (formData.role === 'vendor') {
+          const data = await api.getAllVendors();
+          setVendors(data);
+        } else if (formData.role === 'manager') {
+          const data = await api.getAllCompanies();
+          setCompanies(data);
+        }
+      } catch (err) {
+        console.error("Failed to load dropdown data.", err);
+      }
     }
+    fetchData();
   }, [formData.role]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -28,154 +40,107 @@ export default function Register({ onSwitchToLogin }: { onSwitchToLogin: () => v
     setLoading(true);
     setError('');
 
-    // Debugging: Check what ID is currently selected
-    console.log("Selected Vendor ID:", formData.vendor_id); 
-
     try {
       const payload = {
-        ...formData,
-        // Ensure we convert string "1" to number 1, but keep null if empty
-        vendor_id: (formData.role === 'vendor' && formData.vendor_id) 
-          ? Number(formData.vendor_id) 
-          : null
+        full_name: formData.full_name,
+        email: formData.email,
+        password: formData.password,
+        role: formData.role,
+        vendor_id: (formData.role === 'vendor' && formData.vendor_id) ? Number(formData.vendor_id) : null,
+        company_id: (formData.role === 'manager' && formData.company_id) ? Number(formData.company_id) : null
       };
-
-      console.log("Sending Payload:", payload); // <--- Check your browser console for this!
 
       await api.register(payload);
       setSuccess(true);
-      setTimeout(() => {
-        onSwitchToLogin(); 
-      }, 2000);
+      setTimeout(() => onSwitchToLogin(), 2000);
     } catch (err: any) {
-      setError(err.message || 'Registration failed');
+      console.error(err);
+      setError(err.message || 'Registration failed. Please check your inputs.');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div style={{ 
-      height: "100vh", 
-      display: "flex", 
-      alignItems: "center", 
-      justifyContent: "center", 
-      background: "var(--bg-dark)" 
-    }}>
-      <div className="card" style={{ width: "450px", padding: "2rem" }}>
+    <div style={{ height: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "var(--bg-deep)", backgroundImage: "radial-gradient(circle at 50% 50%, rgba(139, 92, 246, 0.1), transparent 70%)" }}>
+      <div className="card fade-in" style={{ width: "480px", padding: "2.5rem", border: "1px solid rgba(255,255,255,0.1)", background: "rgba(15, 23, 42, 0.6)" }}>
         <div style={{ textAlign: "center", marginBottom: "2rem" }}>
-          <h1 style={{ fontSize: "1.5rem", fontWeight: 700, margin: 0 }}>Create Account</h1>
-          <p style={{ color: "var(--text-secondary)" }}>Join the AI Contract Manager</p>
+          <h1 style={{ fontSize: "1.8rem", fontWeight: 700, margin: "0 0 0.5rem 0" }}>Create Account</h1>
+          <p style={{ color: "var(--text-secondary)", margin: 0 }}>Join the AI Contract Manager</p>
         </div>
 
         {success ? (
-          <div style={{ 
-            background: "rgba(16, 185, 129, 0.1)", 
-            color: "#10b981", 
-            padding: "1rem", 
-            borderRadius: "6px", 
-            textAlign: "center" 
-          }}>
-            ✅ Account created! Redirecting to login...
+          <div style={{ background: "rgba(16, 185, 129, 0.1)", color: "var(--success)", padding: "1rem", borderRadius: "8px", textAlign: "center", border: "1px solid rgba(16, 185, 129, 0.2)" }}>
+            ✅ Account created! Redirecting...
           </div>
         ) : (
-          <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-            
-            {error && <div style={{ color: "#ef4444", fontSize: "0.9rem", textAlign: "center" }}>{error}</div>}
+          <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "1.2rem" }}>
+            {error && <div style={{ color: "var(--danger)", fontSize: "0.9rem", textAlign: "center", background: "rgba(239, 68, 68, 0.1)", padding: "0.5rem", borderRadius: "6px" }}>{error}</div>}
+
+            <input 
+                type="text" placeholder="Full Name" required 
+                value={formData.full_name} onChange={e => setFormData({...formData, full_name: e.target.value})}
+                style={{ background: "rgba(0,0,0,0.2)" }}
+            />
+            <input 
+                type="email" placeholder="Email Address" required 
+                value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})}
+                style={{ background: "rgba(0,0,0,0.2)" }}
+            />
+            <input 
+                type="password" placeholder="Password" required 
+                value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})}
+                style={{ background: "rgba(0,0,0,0.2)" }}
+            />
 
             <div>
-              <label style={{ display: "block", marginBottom: "0.5rem", fontSize: "0.9rem", color: "var(--text-secondary)" }}>Full Name</label>
-              <input 
-                type="text" 
-                required
-                value={formData.full_name}
-                onChange={e => setFormData({...formData, full_name: e.target.value})}
-                style={{ width: "100%", padding: "0.75rem", background: "var(--bg-dark)", border: "1px solid #333", color: "white", borderRadius: "6px" }}
-              />
-            </div>
-
-            <div>
-              <label style={{ display: "block", marginBottom: "0.5rem", fontSize: "0.9rem", color: "var(--text-secondary)" }}>Email</label>
-              <input 
-                type="email" 
-                required
-                value={formData.email}
-                onChange={e => setFormData({...formData, email: e.target.value})}
-                style={{ width: "100%", padding: "0.75rem", background: "var(--bg-dark)", border: "1px solid #333", color: "white", borderRadius: "6px" }}
-              />
-            </div>
-
-            <div>
-              <label style={{ display: "block", marginBottom: "0.5rem", fontSize: "0.9rem", color: "var(--text-secondary)" }}>Password</label>
-              <input 
-                type="password" 
-                required
-                value={formData.password}
-                onChange={e => setFormData({...formData, password: e.target.value})}
-                style={{ width: "100%", padding: "0.75rem", background: "var(--bg-dark)", border: "1px solid #333", color: "white", borderRadius: "6px" }}
-              />
-            </div>
-
-            <div>
-              <label style={{ display: "block", marginBottom: "0.5rem", fontSize: "0.9rem", color: "var(--text-secondary)" }}>Role</label>
+              <label style={{ display: "block", marginBottom: "0.5rem", fontSize: "0.85rem", color: "var(--text-secondary)", fontWeight: 500 }}>I am a...</label>
               <select 
-                value={formData.role}
+                value={formData.role} 
                 onChange={e => setFormData({...formData, role: e.target.value})}
-                style={{ width: "100%", padding: "0.75rem", background: "var(--bg-dark)", border: "1px solid #333", color: "white", borderRadius: "6px" }}
+                style={{ background: "rgba(0,0,0,0.2)" }}
               >
-                <option value="manager">Manager (Standard)</option>
-                <option value="admin">Admin (Full Access)</option>
-                <option value="vendor">Vendor (Restricted)</option>
+                <option value="manager">Company Manager (Employee)</option>
+                <option value="vendor">External Vendor</option>
               </select>
             </div>
 
-            {/* Show Vendor Dropdown ONLY if "Vendor" role is selected */}
-            {formData.role === 'vendor' && (
+            {formData.role === 'manager' && (
               <div className="fade-in">
-                <label style={{ display: "block", marginBottom: "0.5rem", fontSize: "0.9rem", color: "var(--text-secondary)" }}>Select Company</label>
+                <label style={{ display: "block", marginBottom: "0.5rem", fontSize: "0.85rem", color: "var(--text-secondary)", fontWeight: 500 }}>Join Company</label>
                 <select 
                   required
-                  value={formData.vendor_id}
-                  onChange={e => setFormData({...formData, vendor_id: e.target.value})}
-                  style={{ width: "100%", padding: "0.75rem", background: "var(--bg-dark)", border: "1px solid #333", color: "white", borderRadius: "6px" }}
+                  value={formData.company_id}
+                  onChange={e => setFormData({...formData, company_id: e.target.value})}
+                  style={{ background: "rgba(0,0,0,0.2)" }}
                 >
-                  <option value="">-- Choose Company --</option>
-                  {vendors.map((v: any) => (
-                    <option key={v.id} value={v.id}>
-                        {v.name}
-                    </option>
-                ))}
+                  <option value="">-- Select Your Company --</option>
+                  {companies.map((c: any) => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </select>
               </div>
             )}
 
-            <button 
-              type="submit" 
-              disabled={loading}
-              style={{ 
-                marginTop: "1rem",
-                padding: "0.75rem", 
-                background: "var(--accent-primary)", 
-                color: "white", 
-                border: "none", 
-                borderRadius: "6px", 
-                fontWeight: 600,
-                cursor: loading ? "not-allowed" : "pointer",
-                opacity: loading ? 0.7 : 1
-              }}
-            >
-              {loading ? "Creating Account..." : "Register"}
+            {formData.role === 'vendor' && (
+              <div className="fade-in">
+                <label style={{ display: "block", marginBottom: "0.5rem", fontSize: "0.85rem", color: "var(--text-secondary)", fontWeight: 500 }}>Claim Vendor Profile</label>
+                <select 
+                  required
+                  value={formData.vendor_id}
+                  onChange={e => setFormData({...formData, vendor_id: e.target.value})}
+                  style={{ background: "rgba(0,0,0,0.2)" }}
+                >
+                  <option value="">-- Select Vendor Profile --</option>
+                  {vendors.map((v: any) => <option key={v.id} value={v.id}>{v.name}</option>)}
+                </select>
+              </div>
+            )}
+
+            <button type="submit" disabled={loading} className="btn-primary" style={{ marginTop: "1rem", width: "100%" }}>
+              {loading ? "Creating..." : "Create Account"}
             </button>
 
-            <div style={{ textAlign: "center", marginTop: "1rem", fontSize: "0.9rem" }}>
-              Already have an account?{" "}
-              <button 
-                type="button" 
-                onClick={onSwitchToLogin}
-                style={{ background: "none", border: "none", color: "var(--accent-primary)", cursor: "pointer", textDecoration: "underline" }}
-              >
-                Sign In
-              </button>
+            <div style={{ textAlign: "center", marginTop: "1rem", fontSize: "0.9rem", color: "var(--text-muted)" }}>
+              Already have an account? <button type="button" onClick={onSwitchToLogin} style={{ background: "none", border: "none", color: "var(--accent-blue)", cursor: "pointer", fontWeight: 600, padding: 0 }}>Sign In</button>
             </div>
           </form>
         )}

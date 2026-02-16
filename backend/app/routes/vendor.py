@@ -1,71 +1,85 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
+from typing import List
 from app.database import get_db
 from app.models.vendor import Vendor
-from app.models.contract import Contract
+from app.models.user import User
+from app.schemas.vendor_schema import VendorCreate, VendorResponse
+from app.routes.auth import get_current_user
 from app.services.vendor_scoring import calculate_vendor_score
-from app.schemas.vendor_schema import VendorCreate
+from app.models.contract import Contract
 
 router = APIRouter(prefix="/vendors", tags=["Vendors"])
 
-# ✅ 1. Get All Vendors (Public - For Registration Page)
-@router.get("/")
-def read_vendors(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+# ✅ 1. Get All Vendors (Public)
+# We removed 'current_user' here so the Registration Page can populate the dropdown
+@router.get("/", response_model=List[VendorResponse])
+def read_vendors(
+    skip: int = 0, 
+    limit: int = 100, 
+    db: Session = Depends(get_db),
+):
     """
     Fetch all vendors. 
-    Public access allowed so users can select a company during registration.
+    Public access allows users to select their employer during registration.
     """
-    vendors = db.query(Vendor).offset(skip).limit(limit).all()
-    return vendors
+    return db.query(Vendor).offset(skip).limit(limit).all()
 
-# ✅ 2. Create Vendor (Restricted - Ideally Admin only, but open for now)
-@router.post("/")
-def create_vendor(vendor: VendorCreate, db: Session = Depends(get_db)):
-    db_vendor = Vendor(**vendor.dict())
+# ✅ 2. Create Vendor (Protected - Auto-Link to Company)
+@router.post("/", response_model=VendorResponse)
+def create_vendor(
+    vendor: VendorCreate, 
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    # Security: Only Admins/Managers can create vendors
+    if current_user.role not in ["company_admin", "admin", "manager"]:
+        raise HTTPException(status_code=403, detail="Not authorized to onboard vendors")
+
+    if not current_user.company_id:
+        raise HTTPException(status_code=400, detail="User must belong to a company to create vendors")
+
+    # Auto-assign the creating user's Company ID
+    db_vendor = Vendor(
+        **vendor.dict(), 
+        company_id=current_user.company_id 
+    )
     db.add(db_vendor)
     db.commit()
     db.refresh(db_vendor)
     return db_vendor
 
-# ✅ 3. Get Top Vendors (Public/Protected)
+# ✅ 3. Top Vendors (Scoped to Tenant)
 @router.get("/top")
-def top_vendors(db: Session = Depends(get_db)):
-    # Order by performance_score descending
-    vendors = (
-        db.query(Vendor)
-        .order_by(Vendor.performance_score.desc())
-        .limit(5)
-        .all()
-    )
-
-    return [
-        {
-            "vendor_id": v.id,
-            "name": v.name,
-            "performance_score": v.performance_score,
-            "risk_level": v.risk_level
-        }
-        for v in vendors
-    ]
-
-# ✅ 4. Calculate Specific Vendor Score
-@router.get("/{vendor_id}/score")
-def get_vendor_score(vendor_id: int, db: Session = Depends(get_db)):
-    contracts = db.query(Contract).filter(Contract.vendor_id == vendor_id).all()
+def top_vendors(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    query = db.query(Vendor)
     
-    if not contracts:
-        return {"vendor_id": vendor_id, "message": "No contracts found for this vendor"}
+    # Filter by company if not super admin
+    if current_user.role != "super_admin" and current_user.company_id:
+        query = query.filter(Vendor.company_id == current_user.company_id)
+        
+    return query.order_by(Vendor.performance_score.desc()).limit(5).all()
 
-    # Calculate score based on contracts
+# ✅ 4. Calculate Score (Scoped to Tenant)
+@router.get("/{vendor_id}/score")
+def get_vendor_score(vendor_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    # 1. Fetch Vendor
+    vendor = db.query(Vendor).filter(Vendor.id == vendor_id).first()
+    if not vendor:
+        raise HTTPException(status_code=404, detail="Vendor not found")
+
+    # 2. Security Check: Is this MY vendor?
+    if current_user.role != "super_admin" and vendor.company_id != current_user.company_id:
+        raise HTTPException(status_code=403, detail="Access denied to this vendor")
+
+    # 3. Calculate
+    contracts = db.query(Contract).filter(Contract.vendor_id == vendor_id).all()
     score_data = calculate_vendor_score(contracts)
 
-    vendor = db.query(Vendor).filter(Vendor.id == vendor_id).first()
-    if vendor:
-        vendor.performance_score = score_data["performance_score"]
-        vendor.risk_level = score_data["vendor_risk_level"]
-        db.commit()
-    else:
-        raise HTTPException(status_code=404, detail="Vendor not found")
+    # Update Vendor Record
+    vendor.performance_score = score_data["performance_score"]
+    vendor.risk_level = score_data["vendor_risk_level"]
+    db.commit()
 
     return {
         "vendor_id": vendor_id,

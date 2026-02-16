@@ -9,34 +9,55 @@ import VendorDashboard from "./pages/VendorDashboard";
 import AdminUsers from "./pages/AdminUsers";
 import SuperAdminDashboard from "./pages/SuperAdminDashboard";
 
+// Minimal SVG Icons for cleaner look
+const Icons = {
+  Dashboard: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="9" rx="1"></rect><rect x="14" y="3" width="7" height="5" rx="1"></rect><rect x="14" y="12" width="7" height="9" rx="1"></rect><rect x="3" y="16" width="7" height="5" rx="1"></rect></svg>,
+  Contracts: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>,
+  Compare: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg>,
+  Users: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+};
+
+const SidebarItem = ({ active, onClick, icon, label }: any) => (
+  <button
+    onClick={onClick}
+    style={{
+      width: "100%",
+      display: "flex",
+      alignItems: "center",
+      gap: "12px",
+      padding: "12px 16px",
+      background: active ? "rgba(59, 130, 246, 0.1)" : "transparent",
+      border: "none",
+      borderRight: active ? "3px solid var(--accent-blue)" : "3px solid transparent",
+      color: active ? "white" : "var(--text-secondary)",
+      cursor: "pointer",
+      textAlign: "left",
+      fontWeight: active ? 600 : 500,
+      borderRadius: "8px 0 0 8px", // Only round left side
+      marginBottom: "4px",
+      transition: "all 0.2s ease"
+    }}
+  >
+    <span style={{ color: active ? "var(--accent-blue)" : "currentColor", opacity: active ? 1 : 0.7 }}>{icon}</span>
+    {label}
+  </button>
+);
+
 const AppContent = () => {
   const { isAuthenticated, user, logout } = useAuth();
-  
-  // View state: 'dashboard', 'contracts', 'compare', 'users'
   const [currentView, setCurrentView] = useState("dashboard");
   const [isRegistering, setIsRegistering] = useState(false);
 
-  // If not logged in, decide between Login or Register
   if (!isAuthenticated) {
-    if (isRegistering) {
-      return <Register onSwitchToLogin={() => setIsRegistering(false)} />;
-    }
+    if (isRegistering) return <Register onSwitchToLogin={() => setIsRegistering(false)} />;
     return <Login onSwitchToRegister={() => setIsRegistering(true)} />;
   }
 
-  // Render content based on user role & current view
-  const renderContent = () => {
-    // 🏢 Vendor View (Vendors have a completely different UI)
-    if (user?.role === 'vendor') {
-      return <VendorDashboard />;
-    }
+  if (user?.role === 'vendor') return <VendorDashboard />;
 
-    // 🔀 MAIN NAVIGATION SWITCH
+  const renderContent = () => {
     switch (currentView) {
-      case 'dashboard': 
-        // ✅ FIX: If Super Admin, show THEIR dashboard. Otherwise show standard dashboard.
-        return user?.role === 'super_admin' ? <SuperAdminDashboard /> : <Dashboard />;
-        
+      case 'dashboard': return user?.role === 'super_admin' ? <SuperAdminDashboard /> : <Dashboard />;
       case 'contracts': return <Contracts />;
       case 'compare': return <Compare />;
       case 'users': return <AdminUsers />; 
@@ -44,139 +65,97 @@ const AppContent = () => {
     }
   };
 
-  // Vendors don't see the main nav
-  const showNavigation = user?.role !== 'vendor';
-
   return (
-    <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
-      {/* NAVIGATION BAR */}
-      <nav style={{ 
-        borderBottom: "1px solid rgba(255,255,255,0.1)", 
-        padding: "1rem 2rem", 
-        background: "var(--bg-card)",
-        display: "flex",
-        justifyContent: "space-between",
-        alignItems: "center"
+    <div style={{ display: "flex", minHeight: "100vh", background: "var(--bg-deep)" }}>
+      {/* SIDEBAR */}
+      <aside style={{ 
+        width: "280px", 
+        background: "rgba(15, 23, 42, 0.6)", 
+        backdropFilter: "blur(20px)",
+        borderRight: "var(--border-subtle)",
+        display: "flex", 
+        flexDirection: "column",
+        padding: "2rem 0 2rem 1.5rem", // Padding left allows items to touch right edge
+        position: "fixed",
+        height: "100vh",
+        zIndex: 50
       }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
-          <div style={{ width: "32px", height: "32px", background: "var(--accent-primary)", borderRadius: "6px" }}></div>
-          <h2 style={{ margin: 0, fontWeight: 700, fontSize: "1.2rem" }}>
-            AI Contract Manager
-          </h2>
-        </div>
-        
-        <div style={{ display: "flex", alignItems: "center", gap: "2rem" }}>
-          {showNavigation ? (
-            <div style={{ display: "flex", gap: "1rem" }}>
-              <button 
-                onClick={() => setCurrentView("dashboard")} 
-                style={{ 
-                  background: "none", 
-                  border: "none", 
-                  color: currentView === "dashboard" ? "var(--accent-primary)" : "var(--text-secondary)", 
-                  cursor: "pointer", 
-                  fontWeight: 500,
-                  fontSize: "1rem"
-                }}
-              >
-                Dashboard
-              </button>
-              <button 
-                onClick={() => setCurrentView("contracts")} 
-                style={{ 
-                  background: "none", 
-                  border: "none", 
-                  color: currentView === "contracts" ? "var(--accent-primary)" : "var(--text-secondary)", 
-                  cursor: "pointer", 
-                  fontWeight: 500,
-                  fontSize: "1rem"
-                }}
-              >
-                Contracts
-              </button>
-              
-              {/* ❌ HIDE COMPARE BUTTON FOR SUPER ADMIN */}
-              {user?.role !== 'super_admin' && (
-                <button 
-                    onClick={() => setCurrentView("compare")} 
-                    style={{ 
-                    background: "none", 
-                    border: "none", 
-                    color: currentView === "compare" ? "var(--accent-primary)" : "var(--text-secondary)", 
-                    cursor: "pointer", 
-                    fontWeight: 500,
-                    fontSize: "1rem"
-                    }}
-                >
-                    Compare
-                </button>
-              )}
-
-              {/* Admin-Only Users Button */}
-              {user?.role === 'admin' && (
-                <button 
-                  onClick={() => setCurrentView("users")} 
-                  style={{ 
-                    background: "none", 
-                    border: "none", 
-                    color: currentView === "users" ? "#a855f7" : "var(--text-secondary)", 
-                    cursor: "pointer", 
-                    fontWeight: 600,
-                    fontSize: "1rem"
-                  }}
-                >
-                  👮‍♂️ Users
-                </button>
-              )}
+        <div style={{ paddingRight: "1.5rem", marginBottom: "3rem" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+            <div style={{ 
+              width: "36px", height: "36px", 
+              background: "linear-gradient(135deg, var(--accent-blue), var(--accent-purple))", 
+              borderRadius: "10px",
+              boxShadow: "0 0 15px rgba(59, 130, 246, 0.4)"
+            }}></div>
+            <div>
+              <h2 style={{ margin: 0, fontSize: "1.1rem", fontWeight: 700, letterSpacing: "-0.5px" }}>ContractAI</h2>
+              <span style={{ fontSize: "0.7rem", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "1px" }}>ENTERPRISE</span>
             </div>
-          ) : (
-            <div></div> // Spacer for vendors
-          )}
-          
-          {/* USER PROFILE & LOGOUT */}
-          <div style={{ 
-            paddingLeft: "2rem", 
-            borderLeft: showNavigation ? "1px solid #333" : "none", 
-            display: "flex", 
-            alignItems: "center", 
-            gap: "1rem" 
-          }}>
-            <span style={{ fontSize: "0.9rem", color: "white", textAlign: "right" }}>
-              <div style={{fontWeight: "bold"}}>{user?.full_name}</div>
-              <div style={{ opacity: 0.5, fontSize: "0.8rem", textTransform: "uppercase" }}>{user?.role}</div>
-            </span>
-            <button 
-              onClick={logout} 
-              style={{ 
-                background: "rgba(255,255,255,0.1)", 
-                border: "none", 
-                color: "white", 
-                padding: "0.5rem 1rem", 
-                borderRadius: "4px", 
-                cursor: "pointer", 
-                fontSize: "0.8rem" 
-              }}
-            >
-              Logout
-            </button>
           </div>
         </div>
-      </nav>
 
-      {/* MAIN CONTENT AREA */}
-      <main style={{ flex: 1, padding: "2rem" }}>
+        <nav style={{ flex: 1 }}>
+          <SidebarItem active={currentView === 'dashboard'} onClick={() => setCurrentView('dashboard')} icon={Icons.Dashboard} label="Overview" />
+          <SidebarItem active={currentView === 'contracts'} onClick={() => setCurrentView('contracts')} icon={Icons.Contracts} label="Contracts" />
+          {user?.role !== 'super_admin' && (
+            <SidebarItem active={currentView === 'compare'} onClick={() => setCurrentView('compare')} icon={Icons.Compare} label="AI Comparison" />
+          )}
+          {(user?.role === 'super_admin' || user?.role === 'company_admin') && (
+            <SidebarItem active={currentView === 'users'} onClick={() => setCurrentView('users')} icon={Icons.Users} label="User Management" />
+          )}
+        </nav>
+
+        <div style={{ paddingRight: "1.5rem", marginTop: "auto" }}>
+           <div style={{ 
+             background: "rgba(255,255,255,0.03)", 
+             padding: "1rem", 
+             borderRadius: "12px", 
+             border: "var(--border-subtle)" 
+           }}>
+             <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "1rem" }}>
+                <div style={{ 
+                  width: "32px", height: "32px", 
+                  borderRadius: "50%", 
+                  background: "var(--bg-elevated)", 
+                  display: "flex", alignItems: "center", justifyContent: "center", 
+                  fontWeight: "bold", 
+                  border: "1px solid var(--border-highlight)",
+                  color: "var(--text-primary)"
+                }}>
+                  {user?.full_name?.charAt(0)}
+                </div>
+                <div style={{ overflow: "hidden" }}>
+                  <div style={{ fontSize: "0.85rem", fontWeight: 600, whiteSpace: "nowrap" }}>{user?.full_name}</div>
+                  <div style={{ fontSize: "0.7rem", color: "var(--text-muted)" }}>{user?.email}</div>
+                </div>
+             </div>
+             <button onClick={logout} style={{ 
+               width: "100%", padding: "0.6rem", 
+               background: "transparent", 
+               border: "1px solid rgba(239, 68, 68, 0.3)", 
+               color: "#fca5a5", 
+               borderRadius: "8px", 
+               cursor: "pointer", 
+               fontSize: "0.8rem",
+               fontWeight: 600,
+               transition: "all 0.2s"
+             }}
+             onMouseOver={(e) => e.currentTarget.style.background = "rgba(239, 68, 68, 0.1)"}
+             onMouseOut={(e) => e.currentTarget.style.background = "transparent"}
+             >
+                Sign Out
+             </button>
+           </div>
+        </div>
+      </aside>
+
+      {/* MAIN */}
+      <main style={{ flex: 1, padding: "3rem", marginLeft: "280px", overflowY: "auto" }}>
         {renderContent()}
       </main>
     </div>
   );
 };
 
-function App() {
-  return (
-    <AuthProvider>
-      <AppContent />
-    </AuthProvider>
-  );
-}
-
-export default App;
+export default function App() { return <AuthProvider><AppContent /></AuthProvider>; }

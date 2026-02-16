@@ -8,7 +8,7 @@ interface UploadModalProps {
 
 export const UploadModal: React.FC<UploadModalProps> = ({ onClose, onSuccess }) => {
   const [file, setFile] = useState<File | null>(null);
-  const [vendorId, setVendorId] = useState("1"); // Default to ID 1 for now
+  const [vendorId, setVendorId] = useState("1");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -24,7 +24,7 @@ export const UploadModal: React.FC<UploadModalProps> = ({ onClose, onSuccess }) 
     formData.append("vendor_id", vendorId);
     formData.append("contract_name", file.name.replace(".pdf", ""));
     formData.append("start_date", new Date().toISOString().split('T')[0]);
-    // Default end date +1 year
+    
     const endDate = new Date();
     endDate.setFullYear(endDate.getFullYear() + 1);
     formData.append("end_date", endDate.toISOString().split('T')[0]);
@@ -43,60 +43,75 @@ export const UploadModal: React.FC<UploadModalProps> = ({ onClose, onSuccess }) 
 
   return (
     <div style={{
-      position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
-      backgroundColor: "rgba(0,0,0,0.7)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000
+      position: "fixed", inset: 0,
+      backgroundColor: "rgba(0,0,0,0.8)", backdropFilter: "blur(8px)",
+      display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000
     }}>
-      <div className="card" style={{ width: "400px", background: "var(--bg-card)" }}>
-        <h2 style={{ marginTop: 0 }}>Upload Contract</h2>
-        <p style={{ color: "var(--text-secondary)", fontSize: "0.9rem" }}>
-          Upload a PDF. LegalBERT & XGBoost will analyze it instantly.
-        </p>
+      <div className="card fade-in" style={{ width: "450px", border: "1px solid var(--border-highlight)", boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.5)" }}>
+        <div style={{ marginBottom: "1.5rem" }}>
+            <h2 style={{ margin: "0 0 0.5rem 0", fontSize: "1.5rem" }}>📄 Upload Contract</h2>
+            <p style={{ color: "var(--text-secondary)", fontSize: "0.9rem", margin: 0 }}>
+            AI analysis (LegalBERT + XGBoost) starts automatically.
+            </p>
+        </div>
 
-        {error && <div style={{ color: "var(--accent-danger)", marginBottom: "1rem", fontSize: "0.9rem" }}>{error}</div>}
+        {error && (
+            <div style={{ background: "rgba(239, 68, 68, 0.1)", color: "#fca5a5", padding: "0.8rem", borderRadius: "8px", marginBottom: "1rem", fontSize: "0.9rem", border: "1px solid rgba(239, 68, 68, 0.2)" }}>
+                {error}
+            </div>
+        )}
 
-        <form onSubmit={handleUpload} style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+        <form onSubmit={handleUpload} style={{ display: "flex", flexDirection: "column", gap: "1.2rem" }}>
           <div>
-            <label style={{ display: "block", marginBottom: "0.5rem", fontSize: "0.85rem" }}>Vendor ID</label>
+            <label style={{ display: "block", marginBottom: "0.5rem", fontSize: "0.85rem", color: "var(--text-secondary)", fontWeight: 500 }}>Vendor ID</label>
             <input 
               type="number" 
               value={vendorId} 
               onChange={e => setVendorId(e.target.value)}
-              style={{ width: "100%", padding: "0.5rem", background: "var(--bg-dark)", border: "1px solid #333", color: "white", borderRadius: "4px" }}
+              placeholder="Enter ID..."
             />
           </div>
 
-          <div style={{ border: "2px dashed #444", padding: "2rem", textAlign: "center", borderRadius: "8px", cursor: "pointer" }}>
+          <div 
+            style={{ 
+                border: "2px dashed var(--border-highlight)", 
+                background: "rgba(0,0,0,0.2)",
+                padding: "2rem", 
+                textAlign: "center", 
+                borderRadius: "12px", 
+                cursor: "pointer",
+                transition: "all 0.2s"
+            }}
+            onClick={() => document.getElementById('modal-file-upload')?.click()}
+            onMouseEnter={e => e.currentTarget.style.borderColor = "var(--accent-blue)"}
+            onMouseLeave={e => e.currentTarget.style.borderColor = "var(--border-highlight)"}
+          >
             <input 
               type="file" 
               accept=".pdf"
               onChange={e => setFile(e.target.files?.[0] || null)}
               style={{ display: "none" }}
-              id="file-upload"
+              id="modal-file-upload"
             />
-            <label htmlFor="file-upload" style={{ cursor: "pointer", color: "var(--accent-primary)" }}>
-              {file ? file.name : "Click to Select PDF"}
-            </label>
+            <div style={{ fontSize: "2rem", marginBottom: "0.5rem" }}>📂</div>
+            <div style={{ color: file ? "var(--text-primary)" : "var(--text-secondary)", fontSize: "0.9rem" }}>
+              {file ? (
+                  <span style={{ color: "var(--accent-blue)", fontWeight: 600 }}>{file.name}</span>
+              ) : "Click to select PDF"}
+            </div>
           </div>
 
-          <div style={{ display: "flex", gap: "1rem", marginTop: "1rem" }}>
-            <button type="button" onClick={onClose} style={{ flex: 1, padding: "0.75rem", background: "transparent", border: "1px solid #444", color: "white", borderRadius: "6px", cursor: "pointer" }}>
+          <div style={{ display: "flex", gap: "1rem", marginTop: "0.5rem" }}>
+            <button type="button" onClick={onClose} className="btn-ghost" style={{ flex: 1 }}>
               Cancel
             </button>
             <button 
               type="submit" 
               disabled={loading || !file}
-              style={{ 
-                flex: 1, 
-                padding: "0.75rem", 
-                background: loading ? "#555" : "var(--accent-primary)", 
-                border: "none", 
-                color: "white", 
-                borderRadius: "6px", 
-                cursor: loading ? "not-allowed" : "pointer",
-                fontWeight: 600
-              }}
+              className="btn-primary"
+              style={{ flex: 1 }}
             >
-              {loading ? "Analyzing..." : "Analyze & Upload"}
+              {loading ? "Analyzing..." : "Upload & Analyze"}
             </button>
           </div>
         </form>

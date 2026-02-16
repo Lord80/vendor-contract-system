@@ -1,5 +1,4 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-// ✅ IMPORT the correct User type from your types file
 import type { User } from '../types'; 
 
 interface AuthContextType {
@@ -17,10 +16,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [token, setToken] = useState<string | null>(localStorage.getItem('token'));
 
   useEffect(() => {
-    // When app loads, check if we have a token saved
     const storedToken = localStorage.getItem('token');
     const storedUser = localStorage.getItem('user');
-    
     if (storedToken && storedUser) {
       setToken(storedToken);
       setUser(JSON.parse(storedUser));

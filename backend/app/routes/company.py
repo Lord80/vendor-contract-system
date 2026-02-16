@@ -44,13 +44,7 @@ def create_company(
 
     return new_company
 
-# 2. List All Companies (Super Admin Only)
 @router.get("/", response_model=list[CompanyResponse])
-def get_companies(
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
-    if current_user.role != "super_admin":
-        raise HTTPException(status_code=403, detail="Not authorized")
-    
+def get_companies(db: Session = Depends(get_db)):
+    # Just return basic info safe for public
     return db.query(Company).all()

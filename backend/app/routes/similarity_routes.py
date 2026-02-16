@@ -1,23 +1,18 @@
 from fastapi import APIRouter, HTTPException, Depends, Query
 from sqlalchemy.orm import Session
 from typing import List, Optional
-import asyncio
 
-# ✅ FIX 1: Correct Import (Remove 'backend.')
-from app.services.similarity_service import ContractSimilarityEngine
+# ✅ OPTIMIZATION: Import the singleton instance
+from app.services.ai_loader import similarity_engine
 from app.models.contract import Contract
-# ✅ FIX 2: Use the shared get_db
 from app.database import get_db
 
 router = APIRouter(prefix="/similarity", tags=["Similarity Search"])
 
-# Initialize engine
-similarity_engine = ContractSimilarityEngine()
-# Note: You can uncomment this if you want to preload data
-# similarity_engine.initialize_with_sample_clauses()
-
 @router.get("/database/stats")
 def get_similarity_database_stats():
+    if not similarity_engine:
+        return {"status": "AI Engine Offline"}
     return similarity_engine.get_database_stats()
 
 @router.post("/search")
@@ -28,6 +23,9 @@ def search_similar_clauses(
     min_similarity: float = Query(0.7, ge=0.0, le=1.0),
     risk_level: Optional[str] = Query(None)
 ):
+    if not similarity_engine:
+        raise HTTPException(status_code=503, detail="Similarity engine is not loaded")
+
     try:
         results = similarity_engine.find_similar_clauses(
             query_text=query,
@@ -46,25 +44,22 @@ async def compare_two_contracts(
     contract2_id: int,
     db: Session = Depends(get_db)
 ):
+    if not similarity_engine:
+        raise HTTPException(status_code=503, detail="Similarity engine is not loaded")
+
     contract1 = db.query(Contract).filter(Contract.id == contract1_id).first()
     contract2 = db.query(Contract).filter(Contract.id == contract2_id).first()
     
     if not contract1 or not contract2:
         raise HTTPException(status_code=404, detail="One or both contracts not found")
     
-    # Run comparison (CPU bound, so ideally run in executor, but direct call is fine for now)
-    comparison = similarity_engine.compare_contracts(
-        contract1.raw_text[:5000],
-        contract2.raw_text[:5000],
-        "clauses"
-    )
-    
-    # Also get overall score
-    overall = similarity_engine.compare_contracts(
-        contract1.raw_text[:5000],
-        contract2.raw_text[:5000],
-        "overall"
-    )
+    # 1. Compare Content
+    # Limit text length for performance
+    text1 = contract1.raw_text[:10000] if contract1.raw_text else ""
+    text2 = contract2.raw_text[:10000] if contract2.raw_text else ""
+
+    comparison = similarity_engine.compare_contracts(text1, text2, "clauses")
+    overall = similarity_engine.compare_contracts(text1, text2, "overall")
     
     return {
         "contract1": contract1.contract_name,

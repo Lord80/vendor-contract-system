@@ -1,9 +1,46 @@
 import { useEffect, useState } from 'react';
 import { api } from '../services/api';
 import { useAuth } from '../context/AuthContext';
-import { StatCard } from '../components/dashboard/StatCard';
 import { RiskBadge } from '../components/dashboard/RiskBadge';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, CartesianGrid } from 'recharts';
 import type { DashboardSummary, Vendor, Contract } from '../types';
+
+// Sleek Stat Card
+const StatCard = ({ title, value, color = "blue", icon }: any) => {
+  const gradients: any = {
+    blue: "linear-gradient(135deg, rgba(59,130,246,0.1), rgba(59,130,246,0))",
+    green: "linear-gradient(135deg, rgba(16,185,129,0.1), rgba(16,185,129,0))",
+    red: "linear-gradient(135deg, rgba(239,68,68,0.1), rgba(239,68,68,0))",
+    yellow: "linear-gradient(135deg, rgba(245,158,11,0.1), rgba(245,158,11,0))"
+  };
+  const accentColor: any = {
+    blue: "var(--accent-blue)", green: "var(--success)", red: "var(--danger)", yellow: "var(--warning)"
+  };
+
+  return (
+    <div className="card" style={{ background: gradients[color], position: "relative", overflow: "hidden" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "start", position: "relative", zIndex: 1 }}>
+        <div>
+          <div style={{ fontSize: "0.8rem", color: "var(--text-secondary)", fontWeight: 600, letterSpacing: "0.5px", marginBottom: "4px" }}>
+            {title.toUpperCase()}
+          </div>
+          <div style={{ fontSize: "2.5rem", fontWeight: 800, color: "var(--text-primary)", lineHeight: 1 }}>{value}</div>
+        </div>
+        <div style={{ 
+          width: "40px", height: "40px", 
+          borderRadius: "10px", 
+          background: "rgba(255,255,255,0.05)", 
+          display: "flex", alignItems: "center", justifyContent: "center",
+          fontSize: "1.2rem",
+          color: accentColor[color],
+          border: "1px solid rgba(255,255,255,0.1)"
+        }}>
+          {icon}
+        </div>
+      </div>
+    </div>
+  );
+};
 
 export default function Dashboard() {
   const { user } = useAuth();
@@ -11,161 +48,142 @@ export default function Dashboard() {
   const [vendors, setVendors] = useState<Vendor[]>([]);
   const [contracts, setContracts] = useState<Contract[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [isTraining, setIsTraining] = useState(false);
 
   useEffect(() => {
     async function loadData() {
       try {
-        setLoading(true);
-        // Fetch all data in parallel for speed
-        const [summaryData, vendorsData, contractsData] = await Promise.all([
+        const [sum, vend, cont] = await Promise.all([
           api.getDashboardSummary(),
           api.getTopVendors(),
           api.getAllContracts()
         ]);
-
-        setSummary(summaryData);
-        setVendors(vendorsData);
-        setContracts(contractsData);
-      } catch (err: any) {
-        console.error("Dashboard Error:", err);
-        setError("Failed to load dashboard data. Check backend connection.");
-      } finally {
-        setLoading(false);
-      }
+        setSummary(sum);
+        setVendors(vend);
+        setContracts(cont);
+      } catch (err) { console.error(err); } finally { setLoading(false); }
     }
-
     loadData();
   }, []);
 
-  // Function to trigger AI Retraining
   const handleRetrain = async () => {
-    if (!confirm("Are you sure? This will retrain the risk model on all current contracts.")) return;
+    if (!confirm("Retrain AI model? This may take a minute.")) return;
     setIsTraining(true);
-    try {
-      await api.trainModel();
-      alert("AI Model Retraining Started! Check backend logs for progress.");
-    } catch (err) {
-      alert("Failed to start training.");
-    } finally {
-      setIsTraining(false);
-    }
+    try { await api.trainModel(); alert("Training Started!"); } catch(e) { alert("Failed"); } finally { setIsTraining(false); }
   };
 
-  if (loading) return <div style={{ padding: 40, textAlign: "center" }}>Loading AI Insights...</div>;
-  if (error) return <div style={{ padding: 40, color: "var(--accent-danger)" }}>{error}</div>;
+  if (loading) return (
+    <div style={{ display: "grid", gap: "2rem", padding: "2rem" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "1.5rem" }}>
+        {[1,2,3,4].map(i => <div key={i} className="skeleton" style={{ height: "140px" }} />)}
+      </div>
+      <div className="skeleton" style={{ height: "300px" }} />
+    </div>
+  );
+
+  const riskData = [
+    { name: 'Low', value: summary?.risk_distribution.LOW || 0, color: '#10b981' },
+    { name: 'Med', value: summary?.risk_distribution.MEDIUM || 0, color: '#f59e0b' },
+    { name: 'High', value: summary?.risk_distribution.HIGH || 0, color: '#ef4444' },
+  ];
 
   return (
-    <div style={{ maxWidth: 1200, margin: "0 auto" }}>
-      {/* HEADER */}
-      <header style={{ marginBottom: "2rem", display: "flex", justifyContent: "space-between", alignItems: "end" }}>
+    <div className="fade-in">
+      <header style={{ marginBottom: "3rem", display: "flex", justifyContent: "space-between", alignItems: "flex-end" }}>
         <div>
-          <h1 style={{ fontSize: "1.8rem", fontWeight: 700, marginBottom: "0.5rem" }}>
-            Executive Overview
+          <h1 style={{ fontSize: "2.2rem", fontWeight: 800, margin: "0 0 0.5rem 0", letterSpacing: "-1px" }}>
+            Welcome back, {user?.full_name.split(' ')[0]}
           </h1>
-          <p style={{ color: "var(--text-secondary)" }}>
-            Real-time AI analysis of vendor performance and contract risk.
-          </p>
+          <p style={{ color: "var(--text-secondary)", margin: 0, fontSize: "1.1rem" }}>Here's what's happening with your contracts today.</p>
         </div>
-
-        {/* 🔒 RBAC: ONLY SHOW TO ADMINS */}
-        {user?.role === 'admin' && (
-          <button 
-            onClick={handleRetrain}
-            disabled={isTraining}
-            style={{ 
-              background: "rgba(59, 130, 246, 0.1)", 
-              color: "#3b82f6", 
-              border: "1px solid #3b82f6", 
-              padding: "0.5rem 1rem", 
-              borderRadius: "6px", 
-              cursor: isTraining ? "not-allowed" : "pointer",
-              fontWeight: 600,
-              fontSize: "0.85rem"
-            }}
-          >
-            {isTraining ? "Training AI..." : "⚡ Retrain AI Model"}
+        {user?.role === 'super_admin' && (
+          <button onClick={handleRetrain} disabled={isTraining} className="btn-primary" style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+            {isTraining ? <span className="loader"></span> : "⚡"} Retrain AI Model
           </button>
         )}
       </header>
 
-      {/* METRICS GRID */}
-      {summary && (
-        <div style={{ 
-          display: "grid", 
-          gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", 
-          gap: "1.5rem",
-          marginBottom: "2rem" 
-        }}>
-          <StatCard title="Total Contracts" value={summary.total_contracts} color="blue" />
-          <StatCard title="Low Risk" value={summary.risk_distribution.LOW} color="green" />
-          <StatCard title="Medium Risk" value={summary.risk_distribution.MEDIUM} color="yellow" />
-          <StatCard title="High Risk" value={summary.risk_distribution.HIGH} color="red" />
-        </div>
-      )}
+      {/* STATS */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: "1.5rem", marginBottom: "2.5rem" }}>
+        <StatCard title="Contracts" value={summary?.total_contracts} color="blue" icon="📄" />
+        <StatCard title="Critical" value={summary?.risk_distribution.HIGH} color="red" icon="⚠️" />
+        <StatCard title="Vendors" value={vendors.length} color="yellow" icon="🏢" />
+        <StatCard title="Safe" value={summary?.risk_distribution.LOW} color="green" icon="🛡️" />
+      </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: "2rem" }}>
         
-        {/* LEFT COLUMN: CONTRACTS */}
-        <section>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
-            <h3 style={{ margin: 0 }}>Recent Contracts</h3>
-            <button className="badge" style={{ border: "1px solid var(--text-secondary)", cursor: "pointer" }}>View All</button>
+        {/* RECENT ACTIVITY */}
+        <div className="card">
+          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "1.5rem" }}>
+            <h3 style={{ margin: 0, fontSize: "1.1rem" }}>Recent Uploads</h3>
+            <button className="btn-ghost" style={{ fontSize: "0.8rem", padding: "0.4rem 0.8rem" }}>View All</button>
           </div>
-          
-          <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-            {contracts.slice(0, 5).map(contract => (
-              <div key={contract.id} className="card" style={{ padding: "1rem", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <div>
-                  <div style={{ fontWeight: 600, marginBottom: "0.25rem" }}>{contract.contract_name}</div>
-                  <div style={{ fontSize: "0.85rem", color: "var(--text-secondary)" }}>
-                    Vendor ID: {contract.vendor_id} • Expires: {contract.end_date}
+          <div style={{ display: "flex", flexDirection: "column", gap: "0.8rem" }}>
+            {contracts.slice(0, 5).map(c => (
+              <div key={c.id} style={{ 
+                display: "flex", alignItems: "center", justifyContent: "space-between", 
+                padding: "1rem", 
+                background: "rgba(255,255,255,0.02)", 
+                border: "1px solid rgba(255,255,255,0.05)",
+                borderRadius: "10px",
+                transition: "background 0.2s"
+              }}
+              onMouseEnter={e => e.currentTarget.style.background = "rgba(255,255,255,0.04)"}
+              onMouseLeave={e => e.currentTarget.style.background = "rgba(255,255,255,0.02)"}
+              >
+                <div style={{ display: "flex", gap: "1rem", alignItems: "center" }}>
+                  <div style={{ 
+                    width: "40px", height: "40px", borderRadius: "8px", 
+                    background: "rgba(30, 41, 59, 0.8)", border: "1px solid rgba(255,255,255,0.1)",
+                    display: "flex", alignItems: "center", justifyContent: "center"
+                  }}>📄</div>
+                  <div>
+                    <div style={{ fontWeight: 600, fontSize: "0.9rem", color: "var(--text-primary)" }}>{c.contract_name}</div>
+                    <div style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>Vendor #{c.vendor_id} • {c.end_date || 'No Date'}</div>
                   </div>
                 </div>
                 <div style={{ textAlign: "right" }}>
-                  <RiskBadge level={contract.risk_level} />
-                  <div style={{ fontSize: "0.75rem", marginTop: "0.25rem", color: "var(--text-secondary)" }}>
-                    Score: {contract.risk_score}/100
-                  </div>
+                  <RiskBadge level={c.risk_level} />
                 </div>
               </div>
             ))}
           </div>
-        </section>
+        </div>
 
-        {/* RIGHT COLUMN: VENDORS */}
-        <section>
-          <h3 style={{ marginBottom: "1rem" }}>Top Vendors</h3>
-          <div className="card" style={{ padding: 0, overflow: "hidden" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
-              <thead style={{ background: "rgba(255,255,255,0.02)", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
-                <tr>
-                  <th style={{ padding: "1rem", fontSize: "0.75rem", color: "var(--text-secondary)" }}>NAME</th>
-                  <th style={{ padding: "1rem", fontSize: "0.75rem", color: "var(--text-secondary)" }}>SCORE</th>
-                </tr>
-              </thead>
-              <tbody>
-                {vendors.map(vendor => (
-                  <tr key={vendor.vendor_id} style={{ borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
-                    <td style={{ padding: "1rem" }}>
-                      <div style={{ fontWeight: 500 }}>{vendor.name}</div>
-                      <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>{vendor.category}</div>
-                    </td>
-                    <td style={{ padding: "1rem" }}>
-                      <span style={{ 
-                        fontWeight: 700, 
-                        color: vendor.performance_score > 90 ? "var(--accent-success)" : "var(--accent-warning)" 
-                      }}>
-                        {vendor.performance_score.toFixed(1)}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+        {/* RISK ANALYTICS */}
+        <div className="card">
+          <h3 style={{ margin: "0 0 1.5rem 0", fontSize: "1.1rem" }}>Risk Overview</h3>
+          <div style={{ height: "220px", width: "100%", marginBottom: "2rem" }}>
+            <ResponsiveContainer>
+              <BarChart data={riskData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
+                <XAxis dataKey="name" stroke="#64748b" fontSize={12} tickLine={false} axisLine={false} />
+                <YAxis stroke="#64748b" fontSize={12} tickLine={false} axisLine={false} />
+                <Tooltip 
+                  cursor={{fill: 'rgba(255,255,255,0.05)'}}
+                  contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #334155', borderRadius: '8px', boxShadow: '0 4px 6px rgba(0,0,0,0.3)' }}
+                  itemStyle={{ color: '#f1f5f9' }}
+                />
+                <Bar dataKey="value" radius={[6, 6, 0, 0]} barSize={40}>
+                  {riskData.map((entry, index) => <Cell key={index} fill={entry.color} />)}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
           </div>
-        </section>
+          
+          <div>
+            <h4 style={{ margin: "0 0 1rem 0", fontSize: "0.9rem", color: "var(--text-secondary)" }}>Top Performing Vendors</h4>
+            {vendors.map((v, i) => (
+              <div key={v.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.6rem 0", borderBottom: i < vendors.length -1 ? "1px solid rgba(255,255,255,0.05)" : "none" }}>
+                <span style={{ fontSize: "0.9rem" }}>{v.name}</span>
+                <span style={{ fontSize: "0.9rem", fontWeight: "700", color: v.performance_score > 90 ? "var(--success)" : "var(--warning)" }}>
+                  {v.performance_score.toFixed(1)}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
 
       </div>
     </div>

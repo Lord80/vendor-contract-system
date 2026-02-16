@@ -4,14 +4,11 @@ export interface User {
   email: string;
   full_name: string;
   is_active: boolean;
-  // This union type allows all your new roles
-  role: 'super_admin' | 'company_admin' | 'admin' | 'manager' | 'vendor';
-  
-  // Optional links for specific roles
+  // Standardized Roles
+  role: 'super_admin' | 'company_admin' | 'manager' | 'vendor'; 
   vendor_id?: number | null;
-  company_id?: number | null; 
+  company_id?: number | null;
 }
-
 // ✅ 2. COMPANY INTERFACE (For Super Admin Dashboard)
 export interface Company {
   id: number;
@@ -76,4 +73,9 @@ export interface PredictionResult {
   risk_level: string;
   confidence: number;
   top_features: Array<{ feature: string; contribution: number }>;
+}
+
+export interface ContractDetail extends Contract {
+  raw_text?: string;
+  extracted_clauses?: Record<string, string[]>;
 }

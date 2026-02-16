@@ -23,18 +23,3 @@ class ClauseEmbedding(Base):
     # Timestamps
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-
-# class ContractSimilarity(Base):
-#     __tablename__ = "contract_similarities"
-    
-#     id = Column(Integer, primary_key=True, index=True)
-#     contract1_id = Column(Integer, ForeignKey("contracts.id"))
-#     contract2_id = Column(Integer, ForeignKey("contracts.id"))
-    
-#     similarity_score = Column(Float)
-#     comparison_type = Column(String)
-    
-#     # Which clauses contributed to similarity
-#     matching_clauses = Column(JSON)
-    
-#     created_at = Column(DateTime, default=datetime.utcnow)
