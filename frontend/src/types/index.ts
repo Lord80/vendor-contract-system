@@ -1,15 +1,15 @@
-// ✅ 1. USER INTERFACE (Fixes the Role Error in App.tsx)
+// 1. USER
 export interface User {
   id: number;
   email: string;
   full_name: string;
   is_active: boolean;
-  // Standardized Roles
   role: 'super_admin' | 'company_admin' | 'manager' | 'vendor'; 
   vendor_id?: number | null;
   company_id?: number | null;
 }
-// ✅ 2. COMPANY INTERFACE (For Super Admin Dashboard)
+
+// 2. COMPANY
 export interface Company {
   id: number;
   name: string;
@@ -17,9 +17,9 @@ export interface Company {
   created_at: string;
 }
 
-// ✅ 3. VENDOR INTERFACE
+// 3. VENDOR
 export interface Vendor {
-  id: number;          // Backend uses 'id'
+  id: number;
   name: string;
   category: string;
   email: string;
@@ -28,23 +28,19 @@ export interface Vendor {
   company_id?: number | null;
 }
 
-// ✅ 4. CONTRACT INTERFACE (Updated for Multi-Tenancy & Extraction)
+// 4. CONTRACT
 export interface Contract {
   id: number;
   vendor_id: number;
-  company_id?: number | null; // Multi-tenant field
-  
+  company_id?: number | null;
   contract_name: string;
   start_date: string;
-  end_date?: string | null;   // Allow null from backend
+  end_date?: string | null;
   status: string;
-  
   risk_score: number;
   risk_level: "LOW" | "MEDIUM" | "HIGH" | "UNKNOWN";
   summary: string;
-  risk_reasons?: string[];    // Optional, from XGBoost
-  
-  // For the "Extracted Entities" card
+  risk_reasons?: string[];
   entities?: {
     dates: string[];
     money: string[];
@@ -52,7 +48,13 @@ export interface Contract {
   };
 }
 
-// ✅ 5. DASHBOARD & ANALYTICS
+// 5. EXTENDED DETAILS
+export interface ContractDetail extends Contract {
+  raw_text?: string;
+  extracted_clauses?: Record<string, string[]>;
+}
+
+// 6. DASHBOARD
 export interface DashboardSummary {
   total_contracts: number;
   risk_distribution: {
@@ -60,22 +62,4 @@ export interface DashboardSummary {
     MEDIUM: number;
     LOW: number;
   };
-}
-
-export interface SLAEvent {
-  event_date: string;
-  event_type: string;
-  metric_name: string;
-  severity: string;
-}
-
-export interface PredictionResult {
-  risk_level: string;
-  confidence: number;
-  top_features: Array<{ feature: string; contribution: number }>;
-}
-
-export interface ContractDetail extends Contract {
-  raw_text?: string;
-  extracted_clauses?: Record<string, string[]>;
 }

@@ -7,12 +7,11 @@ class Contract(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     contract_name = Column(String, index=True)
-    vendor_id = Column(Integer, ForeignKey("vendors.id"))
     
-    # ✅ NEW: Multi-Tenant Link
-    company_id = Column(Integer, ForeignKey("companies.id"), nullable=True)
+    # Indexes added for faster filtering
+    vendor_id = Column(Integer, ForeignKey("vendors.id"), index=True)
+    company_id = Column(Integer, ForeignKey("companies.id"), nullable=True, index=True)
     
-    # Existing fields
     start_date = Column(Date, nullable=True)
     end_date = Column(Date, nullable=True)
     raw_text = Column(Text, nullable=True)
@@ -25,3 +24,4 @@ class Contract(Base):
     status = Column(String, default="ACTIVE")
 
     company = relationship("Company", back_populates="contracts")
+    vendor_profile = relationship("Vendor", back_populates="contracts")

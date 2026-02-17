@@ -1,22 +1,33 @@
 import torch
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
 from typing import Dict, List
-import re
+import spacy
+import logging
+
+logger = logging.getLogger(__name__)
 
 class LegalBERTClassifier:
     def __init__(self, model_path="nlpaueb/legal-bert-base-uncased"):
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        logger.info(f"🔹 NLP Service running on: {self.device}")
+
         try:
             self.tokenizer = AutoTokenizer.from_pretrained(model_path)
             self.model = AutoModelForSequenceClassification.from_pretrained(
                 model_path, 
                 num_labels=10
-            )
-            # Use CPU for compatibility (change to CUDA if available)
+            ).to(self.device)
             self.model.eval()
-        except:
-            # Fallback to rule-based if model fails to load
+        except Exception as e:
+            logger.error(f"❌ Failed to load LegalBERT: {e}")
             self.model = None
         
+        # Load spaCy for better sentence splitting
+        try:
+            self.nlp = spacy.load("en_core_web_sm", disable=["ner", "tagger"])
+        except:
+            self.nlp = None
+
         self.clause_types = [
             "termination", "payment", "sla", "penalty", "renewal",
             "confidentiality", "indemnification", "liability", 
@@ -32,28 +43,33 @@ class LegalBERTClassifier:
         results = {clause_type: [] for clause_type in self.clause_types}
         
         # Process in batches for efficiency
-        batch_size = 8
+        batch_size = 16 # Increased batch size
         for i in range(0, len(sentences), batch_size):
             batch = sentences[i:i+batch_size]
+            if not batch: continue
             
-            inputs = self.tokenizer(
-                batch, 
-                return_tensors="pt", 
-                padding=True, 
-                truncation=True, 
-                max_length=256
-            )
-            
-            with torch.no_grad():
-                outputs = self.model(**inputs)
-                predictions = torch.softmax(outputs.logits, dim=-1)
-                predicted_classes = torch.argmax(predictions, dim=-1)
+            try:
+                inputs = self.tokenizer(
+                    batch, 
+                    return_tensors="pt", 
+                    padding=True, 
+                    truncation=True, 
+                    max_length=128 # Reduced max_length for speed (clauses usually short)
+                ).to(self.device)
                 
-                for j, (sentence, pred_class) in enumerate(zip(batch, predicted_classes)):
-                    confidence = predictions[j][pred_class].item()
-                    if confidence > 0.6:
-                        clause_type = self.clause_types[pred_class]
-                        results[clause_type].append(sentence)
+                with torch.no_grad():
+                    outputs = self.model(**inputs)
+                    predictions = torch.softmax(outputs.logits, dim=-1)
+                    predicted_classes = torch.argmax(predictions, dim=-1)
+                    
+                    for j, (sentence, pred_class) in enumerate(zip(batch, predicted_classes)):
+                        confidence = predictions[j][pred_class].item()
+                        # Thresholding
+                        if confidence > 0.75: # Stricter threshold
+                            clause_type = self.clause_types[min(pred_class.item(), len(self.clause_types)-1)]
+                            results[clause_type].append(sentence)
+            except Exception as e:
+                logger.warning(f"Batch processing failed: {e}")
         
         return results
     
@@ -63,29 +79,36 @@ class LegalBERTClassifier:
         results = {clause_type: [] for clause_type in self.clause_types}
         
         keyword_map = {
-            "termination": ["terminate", "termination", "cancel", "end"],
-            "payment": ["payment", "fee", "invoice", "payable", "amount"],
+            "termination": ["terminate", "termination", "cancel", "end date"],
+            "payment": ["payment", "fee", "invoice", "payable", "currency"],
             "sla": ["service level", "uptime", "availability", "response time"],
-            "penalty": ["penalty", "fine", "liquidated damages", "breach"],
-            "renewal": ["renew", "renewal", "extend", "extension"],
-            "confidentiality": ["confidential", "non-disclosure", "nda", "proprietary"],
-            "indemnification": ["indemnify", "indemnification", "hold harmless"],
-            "liability": ["liability", "damages", "warranty", "warrant"],
-            "governing_law": ["governing law", "jurisdiction", "venue", "dispute"],
-            "intellectual_property": ["intellectual property", "ip", "copyright", "patent"]
+            "penalty": ["penalty", "liquidated damages", "breach of contract"],
+            "renewal": ["automatic renewal", "extend the term", "renewal period"],
+            "confidentiality": ["confidential information", "non-disclosure", "proprietary"],
+            "indemnification": ["indemnify", "hold harmless", "defend"],
+            "liability": ["limitation of liability", "liable for", "consequential damages"],
+            "governing_law": ["governed by", "jurisdiction", "venue"],
+            "intellectual_property": ["intellectual property", "ownership rights", "patent", "copyright"]
         }
         
         for sentence in sentences:
             sentence_lower = sentence.lower()
             for clause_type, keywords in keyword_map.items():
-                if any(keyword in sentence_lower for keyword in keywords):
+                if any(k in sentence_lower for k in keywords):
                     results[clause_type].append(sentence)
-                    break
+                    break 
         
         return results
     
     def _split_into_sentences(self, text: str) -> List[str]:
-        """Split text into sentences"""
-        # Simple sentence splitting - could use NLTK or spaCy for better results
-        sentences = re.split(r'(?<=[.!?])\s+', text)
-        return [s.strip() for s in sentences if len(s.strip()) > 10]
+        """Split text into sentences using spaCy if available, else robust regex"""
+        if self.nlp:
+            # Increase limit for large docs
+            self.nlp.max_length = len(text) + 1000
+            doc = self.nlp(text)
+            return [sent.text.strip() for sent in doc.sents if len(sent.text.strip()) > 15]
+        
+        # Fallback Regex (Handles Mr., Dr., etc. better than simple split)
+        import re
+        sentences = re.split(r'(?<!\w\.\w.)(?<![A-Z][a-z]\.)(?<=\.|\?)\s', text)
+        return [s.strip() for s in sentences if len(s.strip()) > 15]

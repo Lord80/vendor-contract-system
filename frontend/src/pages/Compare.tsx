@@ -17,11 +17,14 @@ export default function Compare() {
   const handleCompare = async () => {
     if (!selectedId1 || !selectedId2) return;
     setLoading(true);
+    setComparison(null); // Clear previous results
     try {
       const result = await api.compareContracts(Number(selectedId1), Number(selectedId2));
+      console.log("Comparison Result:", result); // Debug log
       setComparison(result);
     } catch (err) {
-      alert("Comparison failed. Check backend logs.");
+      console.error(err);
+      alert("Comparison failed. Check console for details.");
     } finally {
       setLoading(false);
     }
@@ -42,7 +45,7 @@ export default function Compare() {
             <label style={{ display: "block", marginBottom: "0.5rem", fontSize: "0.85rem", color: "var(--text-secondary)", fontWeight: 500 }}>Base Contract</label>
             <select 
               value={selectedId1} onChange={(e) => setSelectedId1(e.target.value)}
-              style={{ background: "rgba(0,0,0,0.3)" }}
+              style={{ background: "rgba(0,0,0,0.3)", width: "100%", padding: "10px", borderRadius: "6px", border: "1px solid var(--border-subtle)", color: "white" }}
             >
               <option value="">-- Select Contract --</option>
               {contracts.map(c => <option key={c.id} value={c.id}>{c.contract_name}</option>)}
@@ -55,7 +58,7 @@ export default function Compare() {
             <label style={{ display: "block", marginBottom: "0.5rem", fontSize: "0.85rem", color: "var(--text-secondary)", fontWeight: 500 }}>Comparison Target</label>
             <select 
               value={selectedId2} onChange={(e) => setSelectedId2(e.target.value)}
-              style={{ background: "rgba(0,0,0,0.3)" }}
+              style={{ background: "rgba(0,0,0,0.3)", width: "100%", padding: "10px", borderRadius: "6px", border: "1px solid var(--border-subtle)", color: "white" }}
             >
               <option value="">-- Select Contract --</option>
               {contracts.filter(c => String(c.id) !== selectedId1).map(c => <option key={c.id} value={c.id}>{c.contract_name}</option>)}
@@ -82,9 +85,9 @@ export default function Compare() {
             <div className="card" style={{ textAlign: "center", display: "flex", flexDirection: "column", justifyContent: "center", background: "linear-gradient(135deg, rgba(16,185,129,0.1), transparent)" }}>
               <div style={{ fontSize: "0.8rem", color: "var(--text-secondary)", fontWeight: 600, letterSpacing: "1px" }}>SIMILARITY MATCH</div>
               <div style={{ fontSize: "3.5rem", fontWeight: 800, color: "var(--success)", lineHeight: 1, margin: "0.5rem 0" }}>
-                {(comparison.overall_comparison.similarity_score * 100).toFixed(1)}%
+                {(comparison.overall_comparison?.similarity_score * 100).toFixed(1)}%
               </div>
-              <div style={{ fontSize: "0.85rem", color: "var(--text-muted)" }}>{comparison.overall_comparison.interpretation}</div>
+              <div style={{ fontSize: "0.85rem", color: "var(--text-muted)" }}>{comparison.overall_comparison?.interpretation}</div>
             </div>
 
             <div className="card">
@@ -92,12 +95,13 @@ export default function Compare() {
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "1rem", background: "rgba(255,255,255,0.02)", borderRadius: "8px" }}>
                 <div>
                   <div style={{ fontSize: "1rem", fontWeight: 600, marginBottom: "0.5rem" }}>{comparison.contract1}</div>
-                  <RiskBadge level={comparison.risk_comparison.contract1_risk} />
+                  {/* Safe Access ?. */}
+                  <RiskBadge level={comparison.risk_comparison?.contract1_risk || "UNKNOWN"} />
                 </div>
                 <div style={{ fontSize: "1.5rem", color: "var(--text-muted)" }}>→</div>
                 <div style={{ textAlign: "right" }}>
                   <div style={{ fontSize: "1rem", fontWeight: 600, marginBottom: "0.5rem" }}>{comparison.contract2}</div>
-                  <RiskBadge level={comparison.risk_comparison.contract2_risk} />
+                  <RiskBadge level={comparison.risk_comparison?.contract2_risk || "UNKNOWN"} />
                 </div>
               </div>
             </div>
@@ -105,29 +109,37 @@ export default function Compare() {
 
           {/* CLAUSE ANALYSIS */}
           <h3 style={{ marginBottom: "1rem", fontSize: "1.2rem" }}>Clause Deviation Analysis</h3>
-          <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-            {comparison.clause_comparison.clause_comparisons.map((match: any, i: number) => (
-              <div key={i} className="card" style={{ padding: "0", overflow: "hidden", border: "1px solid var(--border-subtle)" }}>
-                <div style={{ padding: "0.8rem 1.5rem", background: "rgba(255,255,255,0.03)", display: "flex", justifyContent: "space-between", borderBottom: "1px solid var(--border-subtle)" }}>
-                  <span style={{ fontSize: "0.8rem", fontWeight: 600, color: "var(--text-secondary)" }}>CLAUSE PAIR #{i+1}</span>
-                  <span style={{ fontSize: "0.8rem", fontWeight: 700, color: match.similarity > 0.9 ? "var(--success)" : "var(--warning)" }}>
-                    {(match.similarity * 100).toFixed(0)}% MATCH
-                  </span>
-                </div>
-                
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr" }}>
-                  <div style={{ padding: "1.5rem", borderRight: "1px solid var(--border-subtle)" }}>
-                    <div style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginBottom: "0.5rem", fontWeight: 600 }}>BASE CONTRACT</div>
-                    <div style={{ fontSize: "0.9rem", lineHeight: 1.6, color: "var(--text-secondary)" }}>"{match.clause}"</div>
+          
+          {/* Check if array exists and has length */}
+          {comparison.clause_comparison?.clause_comparisons?.length > 0 ? (
+            <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+              {comparison.clause_comparison.clause_comparisons.map((match: any, i: number) => (
+                <div key={i} className="card" style={{ padding: "0", overflow: "hidden", border: "1px solid var(--border-subtle)" }}>
+                  <div style={{ padding: "0.8rem 1.5rem", background: "rgba(255,255,255,0.03)", display: "flex", justifyContent: "space-between", borderBottom: "1px solid var(--border-subtle)" }}>
+                    <span style={{ fontSize: "0.8rem", fontWeight: 600, color: "var(--text-secondary)" }}>CLAUSE PAIR #{i+1}</span>
+                    <span style={{ fontSize: "0.8rem", fontWeight: 700, color: match.similarity > 0.9 ? "var(--success)" : "var(--warning)" }}>
+                      {(match.similarity * 100).toFixed(0)}% MATCH
+                    </span>
                   </div>
-                  <div style={{ padding: "1.5rem", background: "rgba(255,255,255,0.01)" }}>
-                    <div style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginBottom: "0.5rem", fontWeight: 600 }}>COMPARISON</div>
-                    <div style={{ fontSize: "0.9rem", lineHeight: 1.6, color: "var(--text-primary)" }}>"{match.best_match}"</div>
+                  
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr" }}>
+                    <div style={{ padding: "1.5rem", borderRight: "1px solid var(--border-subtle)" }}>
+                      <div style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginBottom: "0.5rem", fontWeight: 600 }}>BASE CONTRACT</div>
+                      <div style={{ fontSize: "0.9rem", lineHeight: 1.6, color: "var(--text-secondary)" }}>"{match.clause}"</div>
+                    </div>
+                    <div style={{ padding: "1.5rem", background: "rgba(255,255,255,0.01)" }}>
+                      <div style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginBottom: "0.5rem", fontWeight: 600 }}>COMPARISON</div>
+                      <div style={{ fontSize: "0.9rem", lineHeight: 1.6, color: "var(--text-primary)" }}>"{match.best_match}"</div>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          ) : (
+            <div className="card" style={{ textAlign: "center", padding: "2rem", color: "var(--text-secondary)" }}>
+              No significantly similar clauses found between these documents.
+            </div>
+          )}
 
         </div>
       )}

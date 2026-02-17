@@ -17,3 +17,5 @@ IT Service Agreement 2025
 2025-12-31
 
 npm run dev     (for frontend)
+
+pg_dump -U postgres -h localhost -p 5432 vendor_contract_db > "C:\My Workspace\Projects\backup\vendor_contract_backup.sql"

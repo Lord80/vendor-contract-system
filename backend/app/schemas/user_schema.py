@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, ConfigDict
 from typing import Optional
 
 class UserCreate(BaseModel):
@@ -7,7 +7,7 @@ class UserCreate(BaseModel):
     full_name: str
     role: str  # "manager" or "vendor"
     vendor_id: Optional[int] = None
-    company_id: Optional[int] = None  # ✅ Added
+    company_id: Optional[int] = None
 
 class UserResponse(BaseModel):
     id: int
@@ -18,8 +18,7 @@ class UserResponse(BaseModel):
     vendor_id: Optional[int] = None
     company_id: Optional[int] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class UserLogin(BaseModel):
     email: EmailStr

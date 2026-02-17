@@ -10,13 +10,11 @@ class User(Base):
     hashed_password = Column(String, nullable=False)
     full_name = Column(String)
     is_active = Column(Boolean, default=True)
-    
-    # Valid Roles: 'super_admin', 'company_admin', 'manager', 'vendor'
-    role = Column(String, default="manager")
+    role = Column(String, default="manager") # 'super_admin', 'company_admin', 'manager', 'vendor'
 
-    # Relationships
-    vendor_id = Column(Integer, ForeignKey("vendors.id"), nullable=True)
+    # Foreign Keys with Index for Join Performance
+    vendor_id = Column(Integer, ForeignKey("vendors.id"), nullable=True, index=True)
+    company_id = Column(Integer, ForeignKey("companies.id"), nullable=True, index=True)
+
     vendor_profile = relationship("Vendor", backref="users")
-
-    company_id = Column(Integer, ForeignKey("companies.id"), nullable=True)
     company = relationship("Company", back_populates="users")

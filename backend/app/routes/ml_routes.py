@@ -1,9 +1,8 @@
 from fastapi import APIRouter, HTTPException, Depends, Body
 from sqlalchemy.orm import Session
-from typing import Dict, Any, List
+from typing import Dict, Any
 
 from app.database import get_db 
-# ✅ OPTIMIZATION: Import shared singleton
 from app.services.ai_loader import risk_model
 from app.services.ml_models.train_model import train_model_on_existing_data
 
@@ -27,27 +26,20 @@ def predict_contract_risk(contract_data: Dict[str, Any] = Body(...)):
 
 @router.post("/train")
 def train_model_endpoint(db: Session = Depends(get_db)):
-    """
-    Train the ML model on existing contract data.
-    """
     if not risk_model:
         raise HTTPException(503, "Risk model not loaded")
 
     try:
-        # Pass the singleton 'risk_model' instance to the training function
-        # to ensure the in-memory model is updated after training.
+        # Pass singleton instance to update in-memory after training
         result = train_model_on_existing_data(risk_model_instance=risk_model, db_session=db)
         
         if result:
             return {
-                "status": "success",
-                "message": "Model trained successfully",
-                "model_info": risk_model.get_model_info()
+                "status": "success", 
+                "message": "Model retrained successfully", 
+                "info": risk_model.get_model_info()
             }
         else:
-            return {
-                "status": "failed",
-                "message": "Not enough training data (need 10+ contracts)."
-            }
+            return {"status": "skipped", "message": "Insufficient training data (need 10+ contracts)"}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Training failed: {str(e)}")
+        raise HTTPException(500, detail=f"Training failed: {str(e)}")

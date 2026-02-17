@@ -8,10 +8,9 @@ class Company(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, unique=True, index=True)
-    subscription_status = Column(String, default="ACTIVE") # ACTIVE, INACTIVE
+    subscription_status = Column(String, default="ACTIVE")
     created_at = Column(DateTime, default=datetime.utcnow)
 
-    # Relationships (One Company has many Users, Vendors, Contracts)
-    users = relationship("User", back_populates="company")
-    vendors = relationship("Vendor", back_populates="company")
-    contracts = relationship("Contract", back_populates="company")
+    users = relationship("User", back_populates="company", cascade="all, delete-orphan")
+    vendors = relationship("Vendor", back_populates="company", cascade="all, delete-orphan")
+    contracts = relationship("Contract", back_populates="company", cascade="all, delete-orphan")

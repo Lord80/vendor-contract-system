@@ -8,11 +8,12 @@ class Vendor(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, index=True)
     category = Column(String)
-    email = Column(String, unique=False) 
+    email = Column(String, index=True) 
     performance_score = Column(Float, default=0.0)
     risk_level = Column(String, default="LOW")
 
-    # ✅ NEW: Multi-Tenant Link
-    company_id = Column(Integer, ForeignKey("companies.id"), nullable=True)
+    company_id = Column(Integer, ForeignKey("companies.id"), nullable=True, index=True)
     
     company = relationship("Company", back_populates="vendors")
+    # Helper relationship for backend logic
+    contracts = relationship("Contract", back_populates="vendor_profile")

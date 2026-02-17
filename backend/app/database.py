@@ -1,12 +1,17 @@
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker, declarative_base
-from app.config import DATABASE_URL, DEBUG
+from sqlalchemy.orm import sessionmaker, declarative_base, Session
+from typing import Generator
+from app.config import settings
 
 # 1. Create Engine
+# pool_pre_ping=True helps prevent "server has gone away" errors
+# pool_size controls concurrent connections
 engine = create_engine(
-    DATABASE_URL,
-    echo=DEBUG,
-    pool_pre_ping=True
+    settings.DATABASE_URL,
+    echo=settings.DEBUG,
+    pool_pre_ping=True,
+    pool_size=10,        
+    max_overflow=20      
 )
 
 # 2. Create Session Factory
@@ -19,8 +24,9 @@ SessionLocal = sessionmaker(
 # 3. Create Base Model
 Base = declarative_base()
 
-# 4. Dependency Injection (The fix you requested)
-def get_db():
+# 4. Dependency Injection
+def get_db() -> Generator[Session, None, None]:
+    """Yields a database session and ensures it closes."""
     db = SessionLocal()
     try:
         yield db
