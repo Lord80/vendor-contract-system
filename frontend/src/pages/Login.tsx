@@ -18,7 +18,7 @@ export default function Login({ onSwitchToRegister }: { onSwitchToRegister: () =
       const data = await api.login(email, password);
       login(data.access_token, data.user);
     } catch (err) {
-      setError('Invalid email or password');
+      setError('Invalid credentials. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -31,29 +31,31 @@ export default function Login({ onSwitchToRegister }: { onSwitchToRegister: () =
       alignItems: "center", 
       justifyContent: "center", 
       background: "var(--bg-deep)",
-      backgroundImage: "radial-gradient(circle at 50% 50%, rgba(59, 130, 246, 0.1), transparent 70%)"
+      backgroundImage: "radial-gradient(circle at 50% 0%, rgba(59, 130, 246, 0.2), transparent 50%)"
     }}>
-      <div className="card fade-in" style={{ width: "420px", padding: "2.5rem", border: "1px solid rgba(255,255,255,0.1)", background: "rgba(15, 23, 42, 0.6)" }}>
+      <div className="card fade-in" style={{ width: "400px", padding: "3rem 2.5rem" }}>
+        
         <div style={{ textAlign: "center", marginBottom: "2.5rem" }}>
           <div style={{ 
-            width: "56px", height: "56px", 
+            width: "64px", height: "64px", 
             background: "linear-gradient(135deg, var(--accent-blue), var(--accent-purple))", 
-            borderRadius: "14px", 
+            borderRadius: "16px", 
             margin: "0 auto 1.5rem",
-            boxShadow: "0 0 20px rgba(59, 130, 246, 0.4)"
-          }}></div>
-          <h1 style={{ fontSize: "1.8rem", fontWeight: 700, margin: "0 0 0.5rem 0" }}>Welcome Back</h1>
-          <p style={{ color: "var(--text-secondary)", margin: 0 }}>Sign in to ContractAI</p>
+            boxShadow: "0 0 30px rgba(59, 130, 246, 0.5)",
+            display: "flex", alignItems: "center", justifyContent: "center", fontSize: "2rem"
+          }}>⚡</div>
+          <h1 style={{ fontSize: "1.75rem", fontWeight: 700, margin: "0 0 0.5rem 0" }}>Welcome Back</h1>
+          <p style={{ color: "var(--text-secondary)", margin: 0, fontSize: "0.95rem" }}>Sign in to your enterprise workspace</p>
         </div>
 
         {error && (
-          <div style={{ 
+          <div className="fade-in" style={{ 
             background: "rgba(239, 68, 68, 0.1)", 
             color: "#fca5a5", 
-            padding: "0.8rem", 
+            padding: "0.75rem", 
             borderRadius: "8px", 
             marginBottom: "1.5rem",
-            fontSize: "0.9rem",
+            fontSize: "0.85rem",
             textAlign: "center",
             border: "1px solid rgba(239, 68, 68, 0.2)"
           }}>
@@ -61,7 +63,7 @@ export default function Login({ onSwitchToRegister }: { onSwitchToRegister: () =
           </div>
         )}
 
-        <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "1.2rem" }}>
+        <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
           <div>
             <label style={{ display: "block", marginBottom: "0.5rem", fontSize: "0.85rem", color: "var(--text-secondary)", fontWeight: 500 }}>Email Address</label>
             <input 
@@ -70,7 +72,6 @@ export default function Login({ onSwitchToRegister }: { onSwitchToRegister: () =
               onChange={(e) => setEmail(e.target.value)}
               required
               placeholder="name@company.com"
-              style={{ background: "rgba(0, 0, 0, 0.2)" }}
             />
           </div>
           
@@ -82,7 +83,6 @@ export default function Login({ onSwitchToRegister }: { onSwitchToRegister: () =
               onChange={(e) => setPassword(e.target.value)}
               required
               placeholder="••••••••"
-              style={{ background: "rgba(0, 0, 0, 0.2)" }}
             />
           </div>
 
@@ -90,19 +90,19 @@ export default function Login({ onSwitchToRegister }: { onSwitchToRegister: () =
             type="submit" 
             disabled={loading}
             className="btn-primary"
-            style={{ marginTop: "1rem", width: "100%", justifyContent: "center" }}
+            style={{ marginTop: "0.5rem", width: "100%", height: "48px" }}
           >
-            {loading ? "Signing in..." : "Sign In"}
+            {loading ? "Authenticating..." : "Sign In"}
           </button>
 
-          <div style={{ textAlign: "center", marginTop: "1.5rem", fontSize: "0.9rem", color: "var(--text-muted)" }}>
-            Don't have an account?{" "}
+          <div style={{ textAlign: "center", marginTop: "1rem", fontSize: "0.9rem", color: "var(--text-muted)" }}>
+            No account?{" "}
             <button 
               type="button" 
               onClick={onSwitchToRegister}
               style={{ background: "none", border: "none", color: "var(--accent-blue)", cursor: "pointer", fontWeight: 600, padding: 0 }}
             >
-              Sign Up
+              Get Started
             </button>
           </div>
         </form>

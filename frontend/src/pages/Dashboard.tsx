@@ -5,7 +5,7 @@ import { RiskBadge } from '../components/dashboard/RiskBadge';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, CartesianGrid } from 'recharts';
 import type { DashboardSummary, Vendor, Contract } from '../types';
 
-// Sleek Stat Card
+// Sleek Stat Card (Helper Component)
 const StatCard = ({ title, value, color = "blue", icon }: any) => {
   const gradients: any = {
     blue: "linear-gradient(135deg, rgba(59,130,246,0.1), rgba(59,130,246,0))",
@@ -42,6 +42,7 @@ const StatCard = ({ title, value, color = "blue", icon }: any) => {
   );
 };
 
+// Main Dashboard Component
 export default function Dashboard() {
   const { user } = useAuth();
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
@@ -76,7 +77,6 @@ export default function Dashboard() {
     try {
         const result = await api.createVendor(newVendor);
         setInviteCode(result.invite_code || "ERROR");
-        // Refresh list
         const updatedVendors = await api.getTopVendors();
         setVendors(updatedVendors);
     } catch (err) {
@@ -140,75 +140,84 @@ export default function Dashboard() {
         <StatCard title="Safe" value={summary?.risk_distribution.LOW} color="green" icon="🛡️" />
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: "2rem" }}>
+      {/* --- PHASE 1 UPDATE: IMPROVED GRID LAYOUT --- */}
+      <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: "2rem", alignItems: "start" }}>
         
-        {/* RECENT ACTIVITY */}
-        <div className="card">
-          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "1.5rem" }}>
-            <h3 style={{ margin: 0, fontSize: "1.1rem" }}>Recent Uploads</h3>
-            <button className="btn-ghost" style={{ fontSize: "0.8rem", padding: "0.4rem 0.8rem" }}>View All</button>
-          </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: "0.8rem" }}>
-            {contracts.slice(0, 5).map(c => (
-              <div key={c.id} style={{ 
-                display: "flex", alignItems: "center", justifyContent: "space-between", 
-                padding: "1rem", 
-                background: "rgba(255,255,255,0.02)", 
-                border: "1px solid rgba(255,255,255,0.05)",
-                borderRadius: "10px"
-              }}>
-                <div style={{ display: "flex", gap: "1rem", alignItems: "center" }}>
-                  <div style={{ 
-                    width: "40px", height: "40px", borderRadius: "8px", 
-                    background: "rgba(30, 41, 59, 0.8)", border: "1px solid rgba(255,255,255,0.1)",
-                    display: "flex", alignItems: "center", justifyContent: "center"
-                  }}>📄</div>
-                  <div>
-                    <div style={{ fontWeight: 600, fontSize: "0.9rem", color: "var(--text-primary)" }}>{c.contract_name}</div>
-                    <div style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>Vendor #{c.vendor_id} • {c.end_date || 'No Date'}</div>
-                  </div>
+        {/* LEFT COLUMN: Recent Activity & Risk Analytics (Stacked) */}
+        <div style={{ display: "flex", flexDirection: "column", gap: "2rem" }}>
+            
+            {/* RECENT ACTIVITY */}
+            <div className="card" style={{ minHeight: "300px" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "1.5rem" }}>
+                    <h3 style={{ margin: 0, fontSize: "1.1rem" }}>Recent Uploads</h3>
+                    <button className="btn-ghost" style={{ fontSize: "0.8rem", padding: "0.4rem 0.8rem" }}>View All</button>
                 </div>
-                <div style={{ textAlign: "right" }}>
-                  <RiskBadge level={c.risk_level} />
+                <div style={{ display: "flex", flexDirection: "column", gap: "0.8rem" }}>
+                    {contracts.slice(0, 5).map(c => (
+                    <div key={c.id} style={{ 
+                        display: "flex", alignItems: "center", justifyContent: "space-between", 
+                        padding: "1rem", 
+                        background: "rgba(255,255,255,0.02)", 
+                        border: "1px solid rgba(255,255,255,0.05)",
+                        borderRadius: "10px"
+                    }}>
+                        <div style={{ display: "flex", gap: "1rem", alignItems: "center" }}>
+                        <div style={{ 
+                            width: "40px", height: "40px", borderRadius: "8px", 
+                            background: "rgba(30, 41, 59, 0.8)", border: "1px solid rgba(255,255,255,0.1)",
+                            display: "flex", alignItems: "center", justifyContent: "center"
+                        }}>📄</div>
+                        <div>
+                            <div style={{ fontWeight: 600, fontSize: "0.9rem", color: "var(--text-primary)" }}>{c.contract_name}</div>
+                            <div style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>Vendor #{c.vendor_id} • {c.end_date || 'No Date'}</div>
+                        </div>
+                        </div>
+                        <div style={{ textAlign: "right" }}>
+                        <RiskBadge level={c.risk_level} />
+                        </div>
+                    </div>
+                    ))}
                 </div>
-              </div>
-            ))}
-          </div>
+            </div>
+
+            {/* RISK ANALYTICS CHART */}
+            <div className="card">
+                <h3 style={{ margin: "0 0 1.5rem 0", fontSize: "1.1rem" }}>Risk Overview</h3>
+                <div style={{ height: "220px", width: "100%", marginBottom: "2rem" }}>
+                    <ResponsiveContainer>
+                    <BarChart data={riskData}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
+                        <XAxis dataKey="name" stroke="#64748b" fontSize={12} tickLine={false} axisLine={false} />
+                        <YAxis stroke="#64748b" fontSize={12} tickLine={false} axisLine={false} />
+                        <Tooltip 
+                        cursor={{fill: 'rgba(255,255,255,0.05)'}}
+                        contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #334155', borderRadius: '8px' }}
+                        itemStyle={{ color: '#f1f5f9' }}
+                        />
+                        <Bar dataKey="value" radius={[6, 6, 0, 0]} barSize={40}>
+                        {riskData.map((entry, index) => <Cell key={index} fill={entry.color} />)}
+                        </Bar>
+                    </BarChart>
+                    </ResponsiveContainer>
+                </div>
+            </div>
         </div>
 
-        {/* RISK ANALYTICS */}
-        <div className="card">
-          <h3 style={{ margin: "0 0 1.5rem 0", fontSize: "1.1rem" }}>Risk Overview</h3>
-          <div style={{ height: "220px", width: "100%", marginBottom: "2rem" }}>
-            <ResponsiveContainer>
-              <BarChart data={riskData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
-                <XAxis dataKey="name" stroke="#64748b" fontSize={12} tickLine={false} axisLine={false} />
-                <YAxis stroke="#64748b" fontSize={12} tickLine={false} axisLine={false} />
-                <Tooltip 
-                  cursor={{fill: 'rgba(255,255,255,0.05)'}}
-                  contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #334155', borderRadius: '8px' }}
-                  itemStyle={{ color: '#f1f5f9' }}
-                />
-                <Bar dataKey="value" radius={[6, 6, 0, 0]} barSize={40}>
-                  {riskData.map((entry, index) => <Cell key={index} fill={entry.color} />)}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-          
-          <div>
-            <h4 style={{ margin: "0 0 1rem 0", fontSize: "0.9rem", color: "var(--text-secondary)" }}>Top Performing Vendors</h4>
-            {vendors.map((v, i) => (
-              <div key={v.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.6rem 0", borderBottom: i < vendors.length -1 ? "1px solid rgba(255,255,255,0.05)" : "none" }}>
-                <span style={{ fontSize: "0.9rem" }}>{v.name}</span>
-                <span style={{ fontSize: "0.9rem", fontWeight: "700", color: v.performance_score > 90 ? "var(--success)" : "var(--warning)" }}>
-                  {v.performance_score.toFixed(1)}
-                </span>
-              </div>
-            ))}
-          </div>
+        {/* RIGHT COLUMN: Top Vendors (Full Height) */}
+        <div className="card" style={{ height: "100%" }}>
+            <h3 style={{ margin: "0 0 1.5rem 0", fontSize: "1.1rem" }}>Top Performing Vendors</h3>
+            <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+                {vendors.map((v, i) => (
+                <div key={v.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.8rem 0", borderBottom: i < vendors.length -1 ? "1px solid rgba(255,255,255,0.05)" : "none" }}>
+                    <span style={{ fontSize: "0.9rem" }}>{v.name}</span>
+                    <span style={{ fontSize: "0.9rem", fontWeight: "700", color: v.performance_score > 90 ? "var(--success)" : "var(--warning)" }}>
+                    {v.performance_score.toFixed(1)}
+                    </span>
+                </div>
+                ))}
+            </div>
         </div>
+
       </div>
 
       {/* --- ADD VENDOR MODAL --- */}

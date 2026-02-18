@@ -3,6 +3,8 @@ import { api } from '../services/api';
 import type { Contract } from '../types';
 import ContractDetails from './ContractDetails';
 import { useAuth } from '../context/AuthContext';
+import { RiskBadge } from '../components/dashboard/RiskBadge';
+import { UploadModal } from '../components/contracts/UploadModal'; // ✅ IMPORT
 
 export default function Contracts() {
   const { user } = useAuth();
@@ -12,15 +14,6 @@ export default function Contracts() {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterRisk, setFilterRisk] = useState("ALL");
   const [showUploadModal, setShowUploadModal] = useState(false);
-  const [uploading, setUploading] = useState(false);
-  
-  const [uploadForm, setUploadForm] = useState({
-    file: null as File | null,
-    contract_name: "",
-    vendor_id: "",
-    start_date: "",
-    end_date: ""
-  });
 
   useEffect(() => { loadContracts(); }, []);
 
@@ -32,28 +25,6 @@ export default function Contracts() {
     } catch (err) { console.error(err); } 
     finally { setLoading(false); }
   }
-
-  const handleUpload = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!uploadForm.file || !uploadForm.contract_name || !uploadForm.vendor_id) return alert("Missing fields");
-
-    setUploading(true);
-    try {
-      const formData = new FormData();
-      formData.append("file", uploadForm.file);
-      formData.append("contract_name", uploadForm.contract_name);
-      formData.append("vendor_id", uploadForm.vendor_id);
-      formData.append("start_date", uploadForm.start_date || new Date().toISOString().split('T')[0]);
-      formData.append("end_date", uploadForm.end_date || new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString().split('T')[0]);
-
-      await api.uploadContract(formData); 
-      alert("✅ Uploaded!");
-      setShowUploadModal(false);
-      setUploadForm({ file: null, contract_name: "", vendor_id: "", start_date: "", end_date: "" });
-      loadContracts(); 
-    } catch (err) { alert("Upload failed."); } 
-    finally { setUploading(false); }
-  };
 
   const filteredContracts = contracts.filter(c => {
     const matchesSearch = c.contract_name.toLowerCase().includes(searchTerm.toLowerCase());
@@ -79,30 +50,37 @@ export default function Contracts() {
       {/* HEADER */}
       <header style={{ marginBottom: "2rem", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <div>
-          <h1 style={{ fontSize: "2rem", fontWeight: 700, margin: "0 0 0.5rem 0" }}>Contract Repository</h1>
-          <p style={{ color: "var(--text-secondary)", margin: 0 }}>Manage and analyze all agreements.</p>
+          <h1 style={{ fontSize: "2rem", fontWeight: 800, margin: "0 0 0.5rem 0", letterSpacing: "-0.5px" }}>Contract Repository</h1>
+          <p style={{ color: "var(--text-secondary)", margin: 0, fontSize: "1.1rem" }}>Manage and analyze all agreements.</p>
         </div>
         <div style={{ display: "flex", gap: "1rem" }}>
             {user?.role !== 'super_admin' && (
-                <button onClick={() => setShowUploadModal(true)} className="btn-primary">➕ Upload Contract</button>
+                <button onClick={() => setShowUploadModal(true)} className="btn-primary" style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                    <span>➕</span> Upload Contract
+                </button>
             )}
-            <button onClick={handleExport} className="btn-ghost" style={{ border: "1px solid var(--border-highlight)" }}>📥 Export CSV</button>
+            <button onClick={handleExport} className="btn-ghost" style={{ border: "1px solid var(--border-highlight)" }}>
+                📥 Export CSV
+            </button>
         </div>
       </header>
 
       {/* FILTER BAR */}
-      <div className="card" style={{ marginBottom: "2rem", display: "flex", gap: "1rem", alignItems: "center", padding: "1.2rem" }}>
-        <input 
-            type="text" 
-            placeholder="🔍 Search contracts..." 
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            style={{ flex: 1, background: "rgba(0,0,0,0.2)" }}
-        />
+      <div className="card" style={{ marginBottom: "2rem", display: "flex", gap: "1rem", alignItems: "center", padding: "1rem" }}>
+        <div style={{ flex: 1, position: "relative" }}>
+            <span style={{ position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)", opacity: 0.5 }}>🔍</span>
+            <input 
+                type="text" 
+                placeholder="Search contracts by name..." 
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                style={{ paddingLeft: "36px", background: "rgba(0,0,0,0.3)", border: "1px solid var(--border-subtle)" }}
+            />
+        </div>
         <select 
             value={filterRisk}
             onChange={(e) => setFilterRisk(e.target.value)}
-            style={{ width: "200px", background: "rgba(0,0,0,0.2)" }}
+            style={{ width: "200px", background: "rgba(0,0,0,0.3)", border: "1px solid var(--border-subtle)" }}
         >
             <option value="ALL">All Risk Levels</option>
             <option value="HIGH">High Risk</option>
@@ -112,40 +90,61 @@ export default function Contracts() {
       </div>
 
       {/* TABLE */}
-      <div className="card" style={{ padding: 0, overflow: "hidden" }}>
+      <div className="card" style={{ padding: 0, overflow: "hidden", border: "1px solid var(--border-highlight)" }}>
         {loading ? (
             <div style={{ padding: "2rem", display: "grid", gap: "1rem" }}>
-                {[1,2,3].map(i => <div key={i} className="skeleton" style={{ height: "60px" }}></div>)}
+                {[1,2,3,4,5].map(i => <div key={i} className="skeleton" style={{ height: "48px", borderRadius: "8px" }}></div>)}
             </div>
         ) : (
           <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
-            <thead style={{ background: "rgba(255,255,255,0.02)", borderBottom: "1px solid var(--border-subtle)" }}>
+            <thead style={{ background: "rgba(255,255,255,0.03)", borderBottom: "1px solid var(--border-subtle)" }}>
               <tr>
-                <th style={{ padding: "1.2rem", color: "var(--text-secondary)", fontSize: "0.85rem" }}>NAME</th>
-                <th style={{ padding: "1.2rem", color: "var(--text-secondary)", fontSize: "0.85rem" }}>STATUS</th>
-                <th style={{ padding: "1.2rem", color: "var(--text-secondary)", fontSize: "0.85rem" }}>END DATE</th>
-                <th style={{ padding: "1.2rem", color: "var(--text-secondary)", fontSize: "0.85rem" }}>RISK</th>
-                <th style={{ padding: "1.2rem", color: "var(--text-secondary)", fontSize: "0.85rem" }}>ACTION</th>
+                <th style={{ padding: "1rem 1.5rem", color: "var(--text-secondary)", fontSize: "0.75rem", fontWeight: 700, letterSpacing: "0.05em" }}>CONTRACT NAME</th>
+                <th style={{ padding: "1rem", color: "var(--text-secondary)", fontSize: "0.75rem", fontWeight: 700, letterSpacing: "0.05em" }}>STATUS</th>
+                <th style={{ padding: "1rem", color: "var(--text-secondary)", fontSize: "0.75rem", fontWeight: 700, letterSpacing: "0.05em", textAlign: "right" }}>END DATE</th>
+                <th style={{ padding: "1rem", color: "var(--text-secondary)", fontSize: "0.75rem", fontWeight: 700, letterSpacing: "0.05em", textAlign: "center" }}>RISK</th>
+                <th style={{ padding: "1rem 1.5rem", color: "var(--text-secondary)", fontSize: "0.75rem", fontWeight: 700, letterSpacing: "0.05em", textAlign: "right" }}>ACTION</th>
               </tr>
             </thead>
             <tbody>
               {filteredContracts.length === 0 ? (
-                <tr><td colSpan={5} style={{ padding: "3rem", textAlign: "center", color: "var(--text-muted)" }}>No contracts found.</td></tr>
+                <tr>
+                    <td colSpan={5} style={{ padding: "4rem", textAlign: "center", color: "var(--text-muted)" }}>
+                        <div style={{ fontSize: "2rem", marginBottom: "1rem", opacity: 0.5 }}>📭</div>
+                        No contracts found matching your filters.
+                    </td>
+                </tr>
               ) : (
                 filteredContracts.map(c => (
-                  <tr key={c.id} style={{ borderBottom: "1px solid var(--border-subtle)", transition: "background 0.2s" }} onMouseEnter={e => e.currentTarget.style.background = "rgba(255,255,255,0.02)"} onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
-                    <td style={{ padding: "1.2rem", fontWeight: 500 }}>{c.contract_name}</td>
-                    <td style={{ padding: "1.2rem" }}>
-                        <span style={{ fontSize: "0.8rem", padding: "0.2rem 0.6rem", borderRadius: "4px", background: c.status === 'ACTIVE' ? "rgba(16,185,129,0.1)" : "rgba(255,255,255,0.05)", color: c.status === 'ACTIVE' ? "var(--success)" : "var(--text-muted)" }}>
+                  <tr key={c.id} style={{ borderBottom: "1px solid var(--border-subtle)", transition: "all 0.15s ease" }} className="hover:bg-white/5">
+                    <td style={{ padding: "1rem 1.5rem", fontWeight: 500, color: "var(--text-primary)" }}>
+                        {c.contract_name}
+                        <div style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginTop: "2px" }}>ID: {c.id} • Vendor #{c.vendor_id}</div>
+                    </td>
+                    <td style={{ padding: "1rem" }}>
+                        <span style={{ 
+                            fontSize: "0.75rem", padding: "2px 8px", borderRadius: "4px", fontWeight: 600,
+                            background: c.status === 'ACTIVE' ? "rgba(16,185,129,0.15)" : "rgba(148,163,184,0.15)", 
+                            color: c.status === 'ACTIVE' ? "#34d399" : "#94a3b8",
+                            border: c.status === 'ACTIVE' ? "1px solid rgba(16,185,129,0.2)" : "1px solid rgba(148,163,184,0.2)"
+                        }}>
                             {c.status || "ACTIVE"}
                         </span>
                     </td>
-                    <td style={{ padding: "1.2rem", color: "var(--text-muted)", fontSize: "0.9rem" }}>{c.end_date || "N/A"}</td>
-                    <td style={{ padding: "1.2rem" }}>
-                        <span className={`badge ${c.risk_level}`}>{c.risk_level}</span>
+                    <td style={{ padding: "1rem", color: "var(--text-secondary)", fontSize: "0.9rem", textAlign: "right", fontVariantNumeric: "tabular-nums" }}>
+                        {c.end_date || "—"}
                     </td>
-                    <td style={{ padding: "1.2rem" }}>
-                        <button onClick={() => setSelectedContractId(c.id)} className="btn-ghost" style={{ fontSize: "0.8rem", padding: "0.4rem 0.8rem" }}>View</button>
+                    <td style={{ padding: "1rem", textAlign: "center" }}>
+                        <RiskBadge level={c.risk_level} />
+                    </td>
+                    <td style={{ padding: "1rem 1.5rem", textAlign: "right" }}>
+                        <button 
+                            onClick={() => setSelectedContractId(c.id)}
+                            className="btn-ghost" 
+                            style={{ fontSize: "0.8rem", padding: "6px 12px", border: "1px solid var(--border-subtle)" }}
+                        >
+                            View Details
+                        </button>
                     </td>
                   </tr>
                 ))
@@ -155,30 +154,12 @@ export default function Contracts() {
         )}
       </div>
 
-      {/* UPLOAD MODAL */}
+      {/* ✅ NEW: Use the Premium Upload Modal */}
       {showUploadModal && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.8)", backdropFilter: "blur(5px)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 100 }}>
-            <div className="card fade-in" style={{ width: "500px", padding: "2rem", border: "1px solid var(--border-highlight)" }}>
-                <h2 style={{ marginTop: 0, marginBottom: "1.5rem" }}>📄 Upload Contract</h2>
-                <form onSubmit={handleUpload} style={{ display: "grid", gap: "1.2rem" }}>
-                    <div style={{ border: "2px dashed var(--border-highlight)", padding: "2rem", textAlign: "center", borderRadius: "8px", cursor: "pointer", background: "rgba(0,0,0,0.2)" }} onClick={() => document.getElementById('fileInput')?.click()}>
-                        <input id="fileInput" type="file" accept=".pdf" style={{ display: "none" }} onChange={(e) => setUploadForm({...uploadForm, file: e.target.files ? e.target.files[0] : null})} />
-                        <div style={{ fontSize: "2rem", marginBottom: "0.5rem" }}>📂</div>
-                        <div style={{ color: "var(--accent-blue)" }}>{uploadForm.file ? uploadForm.file.name : "Click to select PDF"}</div>
-                    </div>
-                    <input type="text" placeholder="Contract Name" required value={uploadForm.contract_name} onChange={(e) => setUploadForm({...uploadForm, contract_name: e.target.value})} />
-                    <input type="number" placeholder="Vendor ID" required value={uploadForm.vendor_id} onChange={(e) => setUploadForm({...uploadForm, vendor_id: e.target.value})} />
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
-                        <div><label style={{fontSize:"0.8rem", color:"var(--text-muted)", marginBottom:"4px", display:"block"}}>Start Date</label><input type="date" required value={uploadForm.start_date} onChange={(e) => setUploadForm({...uploadForm, start_date: e.target.value})} /></div>
-                        <div><label style={{fontSize:"0.8rem", color:"var(--text-muted)", marginBottom:"4px", display:"block"}}>End Date</label><input type="date" required value={uploadForm.end_date} onChange={(e) => setUploadForm({...uploadForm, end_date: e.target.value})} /></div>
-                    </div>
-                    <div style={{ display: "flex", gap: "1rem", marginTop: "1rem" }}>
-                        <button type="button" onClick={() => setShowUploadModal(false)} className="btn-ghost" style={{ flex: 1 }}>Cancel</button>
-                        <button type="submit" disabled={!uploadForm.file || uploading} className="btn-primary" style={{ flex: 1 }}>{uploading ? "Analyzing..." : "Upload"}</button>
-                    </div>
-                </form>
-            </div>
-        </div>
+        <UploadModal 
+            onClose={() => setShowUploadModal(false)} 
+            onSuccess={loadContracts} 
+        />
       )}
     </div>
   );

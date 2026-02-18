@@ -9,7 +9,7 @@ import VendorDashboard from "./pages/VendorDashboard";
 import AdminUsers from "./pages/AdminUsers";
 import SuperAdminDashboard from "./pages/SuperAdminDashboard";
 
-// Minimal SVG Icons for cleaner look
+// Minimal SVG Icons
 const Icons = {
   Dashboard: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="9" rx="1"></rect><rect x="14" y="3" width="7" height="5" rx="1"></rect><rect x="14" y="12" width="7" height="9" rx="1"></rect><rect x="3" y="16" width="7" height="5" rx="1"></rect></svg>,
   Contracts: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>,
@@ -26,19 +26,28 @@ const SidebarItem = ({ active, onClick, icon, label }: any) => (
       alignItems: "center",
       gap: "12px",
       padding: "12px 16px",
-      background: active ? "rgba(59, 130, 246, 0.1)" : "transparent",
+      // Premium Active State
+      background: active ? "linear-gradient(90deg, rgba(59, 130, 246, 0.15), transparent)" : "transparent",
       border: "none",
-      borderRight: active ? "3px solid var(--accent-blue)" : "3px solid transparent",
+      borderLeft: active ? "3px solid var(--accent-blue)" : "3px solid transparent",
       color: active ? "white" : "var(--text-secondary)",
       cursor: "pointer",
       textAlign: "left",
       fontWeight: active ? 600 : 500,
-      borderRadius: "8px 0 0 8px", // Only round left side
+      borderRadius: "0 8px 8px 0",
       marginBottom: "4px",
-      transition: "all 0.2s ease"
+      transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)"
     }}
   >
-    <span style={{ color: active ? "var(--accent-blue)" : "currentColor", opacity: active ? 1 : 0.7 }}>{icon}</span>
+    {/* Icon Glow */}
+    <span style={{ 
+        color: active ? "var(--accent-blue)" : "currentColor", 
+        opacity: active ? 1 : 0.7,
+        filter: active ? "drop-shadow(0 0 8px rgba(59, 130, 246, 0.6))" : "none",
+        transition: "filter 0.2s ease"
+    }}>
+        {icon}
+    </span>
     {label}
   </button>
 );
@@ -69,44 +78,44 @@ const AppContent = () => {
     <div style={{ display: "flex", minHeight: "100vh", background: "var(--bg-deep)" }}>
       {/* SIDEBAR */}
       <aside style={{ 
-        width: "280px", 
+        width: "260px", 
         background: "rgba(15, 23, 42, 0.6)", 
         backdropFilter: "blur(20px)",
         borderRight: "var(--border-subtle)",
         display: "flex", 
         flexDirection: "column",
-        padding: "2rem 0 2rem 1.5rem", // Padding left allows items to touch right edge
+        padding: "2rem 0",
         position: "fixed",
         height: "100vh",
         zIndex: 50
       }}>
-        <div style={{ paddingRight: "1.5rem", marginBottom: "3rem" }}>
+        <div style={{ padding: "0 1.5rem", marginBottom: "3rem" }}>
           <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
             <div style={{ 
-              width: "36px", height: "36px", 
+              width: "32px", height: "32px", 
               background: "linear-gradient(135deg, var(--accent-blue), var(--accent-purple))", 
-              borderRadius: "10px",
+              borderRadius: "8px",
               boxShadow: "0 0 15px rgba(59, 130, 246, 0.4)"
             }}></div>
             <div>
-              <h2 style={{ margin: 0, fontSize: "1.1rem", fontWeight: 700, letterSpacing: "-0.5px" }}>ContractAI</h2>
-              <span style={{ fontSize: "0.7rem", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "1px" }}>ENTERPRISE</span>
+              <h2 style={{ margin: 0, fontSize: "1rem", fontWeight: 700, letterSpacing: "-0.5px" }}>ContractAI</h2>
+              <span style={{ fontSize: "0.65rem", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "1px", fontWeight: 600 }}>Enterprise</span>
             </div>
           </div>
         </div>
 
-        <nav style={{ flex: 1 }}>
+        <nav style={{ flex: 1, paddingRight: "1rem" }}>
           <SidebarItem active={currentView === 'dashboard'} onClick={() => setCurrentView('dashboard')} icon={Icons.Dashboard} label="Overview" />
           <SidebarItem active={currentView === 'contracts'} onClick={() => setCurrentView('contracts')} icon={Icons.Contracts} label="Contracts" />
           {user?.role !== 'super_admin' && (
             <SidebarItem active={currentView === 'compare'} onClick={() => setCurrentView('compare')} icon={Icons.Compare} label="AI Comparison" />
           )}
           {(user?.role === 'super_admin' || user?.role === 'company_admin') && (
-            <SidebarItem active={currentView === 'users'} onClick={() => setCurrentView('users')} icon={Icons.Users} label="User Management" />
+            <SidebarItem active={currentView === 'users'} onClick={() => setCurrentView('users')} icon={Icons.Users} label="Team Access" />
           )}
         </nav>
 
-        <div style={{ paddingRight: "1.5rem", marginTop: "auto" }}>
+        <div style={{ padding: "0 1.5rem" }}>
            <div style={{ 
              background: "rgba(255,255,255,0.03)", 
              padding: "1rem", 
@@ -114,36 +123,24 @@ const AppContent = () => {
              border: "var(--border-subtle)" 
            }}>
              <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "1rem" }}>
-                <div style={{ 
-                  width: "32px", height: "32px", 
-                  borderRadius: "50%", 
-                  background: "var(--bg-elevated)", 
-                  display: "flex", alignItems: "center", justifyContent: "center", 
-                  fontWeight: "bold", 
-                  border: "1px solid var(--border-highlight)",
-                  color: "var(--text-primary)"
-                }}>
-                  {user?.full_name?.charAt(0)}
-                </div>
-                <div style={{ overflow: "hidden" }}>
-                  <div style={{ fontSize: "0.85rem", fontWeight: 600, whiteSpace: "nowrap" }}>{user?.full_name}</div>
-                  <div style={{ fontSize: "0.7rem", color: "var(--text-muted)" }}>{user?.email}</div>
-                </div>
+               <div style={{ 
+                 width: "32px", height: "32px", 
+                 borderRadius: "50%", 
+                 background: "var(--bg-elevated)", 
+                 display: "flex", alignItems: "center", justifyContent: "center", 
+                 fontWeight: "bold", 
+                 border: "1px solid var(--border-highlight)",
+                 color: "var(--text-primary)",
+                 fontSize: "0.8rem"
+               }}>
+                 {user?.full_name?.charAt(0)}
+               </div>
+               <div style={{ overflow: "hidden" }}>
+                 <div style={{ fontSize: "0.85rem", fontWeight: 600, whiteSpace: "nowrap", textOverflow: "ellipsis", overflow: "hidden" }}>{user?.full_name}</div>
+                 <div style={{ fontSize: "0.7rem", color: "var(--text-secondary)" }}>{user?.role.replace("_", " ")}</div>
+               </div>
              </div>
-             <button onClick={logout} style={{ 
-               width: "100%", padding: "0.6rem", 
-               background: "transparent", 
-               border: "1px solid rgba(239, 68, 68, 0.3)", 
-               color: "#fca5a5", 
-               borderRadius: "8px", 
-               cursor: "pointer", 
-               fontSize: "0.8rem",
-               fontWeight: 600,
-               transition: "all 0.2s"
-             }}
-             onMouseOver={(e) => e.currentTarget.style.background = "rgba(239, 68, 68, 0.1)"}
-             onMouseOut={(e) => e.currentTarget.style.background = "transparent"}
-             >
+             <button onClick={logout} className="btn-danger" style={{ width: "100%", padding: "0.5rem", fontSize: "0.8rem" }}>
                 Sign Out
              </button>
            </div>
@@ -151,7 +148,7 @@ const AppContent = () => {
       </aside>
 
       {/* MAIN */}
-      <main style={{ flex: 1, padding: "3rem", marginLeft: "280px", overflowY: "auto" }}>
+      <main style={{ flex: 1, padding: "3rem", marginLeft: "260px", overflowY: "auto" }}>
         {renderContent()}
       </main>
     </div>
