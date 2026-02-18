@@ -9,6 +9,7 @@ from app.models.user import User
 from app.models.company import Company
 from app.models.vendor import Vendor
 from app.schemas.user_schema import UserCreate, UserResponse, Token
+from app.schemas.vendor_schema import VendorRegisterRequest
 
 # ✅ FIX: Import 'settings' for config, and only functions from 'security'
 from app.config import settings
@@ -17,6 +18,7 @@ from jose import JWTError, jwt
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
+
 
 def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
     credentials_exception = HTTPException(
@@ -150,3 +152,32 @@ def delete_user(
         return {"message": "User deleted"}
 
     raise HTTPException(status_code=403, detail="Not authorized")
+
+@router.post("/register/vendor", response_model=UserResponse)
+def register_vendor(user_data: VendorRegisterRequest, db: Session = Depends(get_db)):
+    """
+    Specific endpoint for Vendor Registration using Invite Code.
+    """
+    # 1. Validate Invite Code
+    vendor = db.query(Vendor).filter(Vendor.invite_code == user_data.invite_code).first()
+    if not vendor:
+        raise HTTPException(status_code=400, detail="Invalid Vendor Invite Code")
+
+    # 2. Check Email
+    if db.query(User).filter(User.email == user_data.email).first():
+        raise HTTPException(status_code=400, detail="Email already registered")
+
+    # 3. Create User Linked to Vendor
+    new_user = User(
+        email=user_data.email,
+        hashed_password=get_password_hash(user_data.password),
+        full_name=user_data.full_name,
+        role="vendor",
+        vendor_id=vendor.id,        # Link to the vendor we found
+        company_id=vendor.company_id, # Link to the tenant
+        is_active=True
+    )
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
+    return new_user

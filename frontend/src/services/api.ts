@@ -45,6 +45,15 @@ export const api = {
     return handleResponse<any>(res);
   },
 
+  registerVendor: async (userData: any) => {
+    const res = await fetch(`${API_BASE}/auth/register/vendor`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(userData),
+    });
+    return handleResponse<any>(res);
+  },
+
   getAllUsers: () => fetch(`${API_BASE}/auth/users/`, { headers: getAuthHeaders() }).then(handleResponse<any[]>),
   
   deleteUser: (id: number) => 
@@ -58,6 +67,15 @@ export const api = {
 
   // --- Vendors ---
   getTopVendors: () => fetch(`${API_BASE}/vendors/top`, { headers: getAuthHeaders() }).then(handleResponse<Vendor[]>),
+  
+  // ✅ NEW: Create Vendor
+  createVendor: (data: { name: string; category: string; email: string }) => 
+    fetch(`${API_BASE}/vendors/`, { 
+      method: 'POST', 
+      headers: getAuthHeaders(), 
+      body: JSON.stringify(data) 
+    }).then(handleResponse<Vendor>), // Uses updated Vendor type
+
   getAllVendors: () => fetch(`${API_BASE}/vendors/`, { headers: getAuthHeaders() }).then(handleResponse<Vendor[]>),
 
   // --- Contracts ---

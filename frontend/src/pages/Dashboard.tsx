@@ -50,6 +50,11 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [isTraining, setIsTraining] = useState(false);
 
+  // --- MODAL STATE ---
+  const [showModal, setShowModal] = useState(false);
+  const [newVendor, setNewVendor] = useState({ name: "", email: "", category: "Services" });
+  const [inviteCode, setInviteCode] = useState<string | null>(null);
+
   useEffect(() => {
     async function loadData() {
       try {
@@ -66,6 +71,19 @@ export default function Dashboard() {
     loadData();
   }, []);
 
+  const handleCreateVendor = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+        const result = await api.createVendor(newVendor);
+        setInviteCode(result.invite_code || "ERROR");
+        // Refresh list
+        const updatedVendors = await api.getTopVendors();
+        setVendors(updatedVendors);
+    } catch (err) {
+        alert("Failed to create vendor");
+    }
+  };
+
   const handleRetrain = async () => {
     if (!confirm("Retrain AI model? This may take a minute.")) return;
     setIsTraining(true);
@@ -74,9 +92,6 @@ export default function Dashboard() {
 
   if (loading) return (
     <div style={{ display: "grid", gap: "2rem", padding: "2rem" }}>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "1.5rem" }}>
-        {[1,2,3,4].map(i => <div key={i} className="skeleton" style={{ height: "140px" }} />)}
-      </div>
       <div className="skeleton" style={{ height: "300px" }} />
     </div>
   );
@@ -96,11 +111,25 @@ export default function Dashboard() {
           </h1>
           <p style={{ color: "var(--text-secondary)", margin: 0, fontSize: "1.1rem" }}>Here's what's happening with your contracts today.</p>
         </div>
-        {user?.role === 'super_admin' && (
-          <button onClick={handleRetrain} disabled={isTraining} className="btn-primary" style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-            {isTraining ? <span className="loader"></span> : "⚡"} Retrain AI Model
-          </button>
-        )}
+        
+        <div style={{ display: "flex", gap: "10px" }}>
+            {/* ADD VENDOR BUTTON */}
+            {(user?.role === 'manager' || user?.role === 'company_admin') && (
+                <button 
+                    onClick={() => setShowModal(true)} 
+                    className="btn-primary" 
+                    style={{ background: "var(--accent-blue)", display: "flex", alignItems: "center", gap: "8px" }}
+                >
+                    🏢 Add Vendor
+                </button>
+            )}
+
+            {user?.role === 'super_admin' && (
+            <button onClick={handleRetrain} disabled={isTraining} className="btn-primary" style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                {isTraining ? <span className="loader"></span> : "⚡"} Retrain AI
+            </button>
+            )}
+        </div>
       </header>
 
       {/* STATS */}
@@ -126,12 +155,8 @@ export default function Dashboard() {
                 padding: "1rem", 
                 background: "rgba(255,255,255,0.02)", 
                 border: "1px solid rgba(255,255,255,0.05)",
-                borderRadius: "10px",
-                transition: "background 0.2s"
-              }}
-              onMouseEnter={e => e.currentTarget.style.background = "rgba(255,255,255,0.04)"}
-              onMouseLeave={e => e.currentTarget.style.background = "rgba(255,255,255,0.02)"}
-              >
+                borderRadius: "10px"
+              }}>
                 <div style={{ display: "flex", gap: "1rem", alignItems: "center" }}>
                   <div style={{ 
                     width: "40px", height: "40px", borderRadius: "8px", 
@@ -162,7 +187,7 @@ export default function Dashboard() {
                 <YAxis stroke="#64748b" fontSize={12} tickLine={false} axisLine={false} />
                 <Tooltip 
                   cursor={{fill: 'rgba(255,255,255,0.05)'}}
-                  contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #334155', borderRadius: '8px', boxShadow: '0 4px 6px rgba(0,0,0,0.3)' }}
+                  contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #334155', borderRadius: '8px' }}
                   itemStyle={{ color: '#f1f5f9' }}
                 />
                 <Bar dataKey="value" radius={[6, 6, 0, 0]} barSize={40}>
@@ -184,8 +209,67 @@ export default function Dashboard() {
             ))}
           </div>
         </div>
-
       </div>
+
+      {/* --- ADD VENDOR MODAL --- */}
+      {showModal && (
+        <div style={{
+            position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
+            background: "rgba(0,0,0,0.8)", backdropFilter: "blur(5px)",
+            display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100
+        }}>
+            <div className="card" style={{ width: "400px", border: "1px solid var(--border-highlight)" }}>
+                <h2 style={{ marginTop: 0 }}>Add New Vendor</h2>
+                
+                {!inviteCode ? (
+                    <form onSubmit={handleCreateVendor} style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+                        <div>
+                            <label style={{ display: "block", marginBottom: "0.5rem", fontSize: "0.9rem" }}>Vendor Name</label>
+                            <input 
+                                className="input-field" 
+                                required 
+                                value={newVendor.name}
+                                onChange={e => setNewVendor({...newVendor, name: e.target.value})}
+                                placeholder="e.g. Tech Solutions Inc"
+                            />
+                        </div>
+                        <div>
+                            <label style={{ display: "block", marginBottom: "0.5rem", fontSize: "0.9rem" }}>Contact Email</label>
+                            <input 
+                                className="input-field" 
+                                type="email"
+                                required 
+                                value={newVendor.email}
+                                onChange={e => setNewVendor({...newVendor, email: e.target.value})}
+                                placeholder="contact@vendor.com"
+                            />
+                        </div>
+                        <div style={{ display: "flex", gap: "1rem", marginTop: "1rem" }}>
+                            <button type="button" onClick={() => setShowModal(false)} className="btn-ghost" style={{ flex: 1 }}>Cancel</button>
+                            <button type="submit" className="btn-primary" style={{ flex: 1 }}>Create & Get Code</button>
+                        </div>
+                    </form>
+                ) : (
+                    <div style={{ textAlign: "center" }}>
+                        <div style={{ fontSize: "3rem", marginBottom: "1rem" }}>✅</div>
+                        <p>Vendor Profile Created!</p>
+                        <p style={{ color: "var(--text-secondary)", fontSize: "0.9rem" }}>Share this Invite Code with the vendor to register:</p>
+                        <div style={{ 
+                            background: "rgba(16, 185, 129, 0.1)", border: "1px solid var(--success)", 
+                            color: "var(--success)", padding: "1rem", fontSize: "1.5rem", fontWeight: "bold",
+                            letterSpacing: "2px", borderRadius: "8px", margin: "1rem 0"
+                        }}>
+                            {inviteCode}
+                        </div>
+                        <button onClick={() => { setShowModal(false); setInviteCode(null); setNewVendor({ name: "", email: "", category: "Services" }); }} className="btn-primary" style={{ width: "100%" }}>
+                            Done
+                        </button>
+                    </div>
+                )}
+            </div>
+        </div>
+      )}
+
     </div>
   );
 }

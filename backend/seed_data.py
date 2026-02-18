@@ -8,11 +8,14 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from app.database import SessionLocal
 from app.core.security import get_password_hash
+
+# ✅ FIX: Import SLA/Performance models FIRST so they are registered 
+# before 'Vendor' tries to link to them.
+from app.models.sla import SLAEvent, VendorPerformance
 from app.models.user import User
 from app.models.company import Company
 from app.models.vendor import Vendor
 from app.models.contract import Contract
-from app.models.sla import SLAEvent, VendorPerformance
 
 db = SessionLocal()
 
@@ -37,6 +40,21 @@ def get_or_create_company(name, admin_email, admin_name):
         db.add(user)
         db.commit()
     return company
+
+def create_company_manager(company_id, email, name):
+    """Creates a standard Manager user for a company"""
+    if not db.query(User).filter(User.email == email).first():
+        print(f"  👤 Creating Manager: {name}")
+        user = User(
+            email=email,
+            hashed_password=get_password_hash("password123"),
+            full_name=name,
+            role="manager",
+            company_id=company_id,
+            is_active=True
+        )
+        db.add(user)
+        db.commit()
 
 def create_vendor_stack(company_id, name, email, risk_level, score):
     # 1. Create Vendor Profile
@@ -95,6 +113,7 @@ try:
 
     # --- ACME CORP DATA ---
     acme = get_or_create_company("Acme Corp", "admin@acme.com", "Alice Admin")
+    create_company_manager(acme.id, "manager@acme.com", "Ravi Yadav") # ✅ Acme Manager
     
     # High Risk Vendor
     create_vendor_stack(acme.id, "FastTrack Logistics", "info@fasttrack.com", "HIGH", 45.0)
@@ -103,6 +122,7 @@ try:
 
     # --- GLOBEX CORP DATA ---
     globex = get_or_create_company("Globex Corp", "admin@globex.com", "Globex Admin")
+    create_company_manager(globex.id, "manager@globex.com", "Sonia Singh") # ✅ Globex Manager
     
     # Medium Risk Vendor (Competitor's vendor)
     create_vendor_stack(globex.id, "Quantum Security", "secure@quantum.com", "MEDIUM", 75.0)
@@ -110,10 +130,11 @@ try:
     print("\n✅ SEEDING COMPLETE!")
     print("------------------------------------------------")
     print("New Logins to Try:")
-    print("1. Acme Manager:   admin@acme.com / securepassword123 (or password123 if newly created)")
-    print("2. Globex Manager: admin@globex.com / password123")
-    print("3. Vendor (FastTrack): contact@fasttracklogistics.com / vendor123")
-    print("4. Vendor (Quantum):   contact@quantumsecurity.com / vendor123")
+    print("1. Acme Admin:      admin@acme.com / password123")
+    print("2. Acme Manager:    manager@acme.com / password123")
+    print("3. Globex Admin:    admin@globex.com / password123")
+    print("4. Globex Manager:  manager@globex.com / password123")
+    print("5. Vendor (High):   contact@fasttracklogistics.com / vendor123")
     print("------------------------------------------------")
 
 except Exception as e:

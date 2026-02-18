@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { api } from '../services/api';
-import type { Vendor, Company } from '../types';
+import type { Company } from '../types';
 
 export default function Register({ onSwitchToLogin }: { onSwitchToLogin: () => void }) {
   const [formData, setFormData] = useState({
@@ -8,11 +8,12 @@ export default function Register({ onSwitchToLogin }: { onSwitchToLogin: () => v
     email: '',
     password: '',
     role: 'manager', // Default
-    vendor_id: '',
-    company_id: ''   // ✅ New field
+    company_id: ''   
   });
   
-  const [vendors, setVendors] = useState<Vendor[]>([]);
+  // ✅ FIX: Added state for Invite Code
+  const [inviteCode, setInviteCode] = useState('');
+
   const [companies, setCompanies] = useState<Company[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -21,10 +22,9 @@ export default function Register({ onSwitchToLogin }: { onSwitchToLogin: () => v
   useEffect(() => {
     async function fetchData() {
       try {
-        if (formData.role === 'vendor') {
-          const data = await api.getAllVendors();
-          setVendors(data);
-        } else if (formData.role === 'manager') {
+        // We only need to fetch companies for Managers.
+        // Vendors use an invite code, so no need to fetch a list.
+        if (formData.role === 'manager') {
           const data = await api.getAllCompanies();
           setCompanies(data);
         }
@@ -41,16 +41,26 @@ export default function Register({ onSwitchToLogin }: { onSwitchToLogin: () => v
     setError('');
 
     try {
-      const payload = {
-        full_name: formData.full_name,
-        email: formData.email,
-        password: formData.password,
-        role: formData.role,
-        vendor_id: (formData.role === 'vendor' && formData.vendor_id) ? Number(formData.vendor_id) : null,
-        company_id: (formData.role === 'manager' && formData.company_id) ? Number(formData.company_id) : null
-      };
+      if (formData.role === 'vendor') {
+        // ✅ NEW VENDOR FLOW (Invite Code)
+        await api.registerVendor({
+          full_name: formData.full_name,
+          email: formData.email,
+          password: formData.password,
+          invite_code: inviteCode 
+        });
+      } else {
+        // ✅ EXISTING MANAGER FLOW
+        const payload = {
+          full_name: formData.full_name,
+          email: formData.email,
+          password: formData.password,
+          role: formData.role,
+          company_id: formData.company_id ? Number(formData.company_id) : null
+        };
+        await api.register(payload);
+      }
 
-      await api.register(payload);
       setSuccess(true);
       setTimeout(() => onSwitchToLogin(), 2000);
     } catch (err: any) {
@@ -81,16 +91,19 @@ export default function Register({ onSwitchToLogin }: { onSwitchToLogin: () => v
                 type="text" placeholder="Full Name" required 
                 value={formData.full_name} onChange={e => setFormData({...formData, full_name: e.target.value})}
                 style={{ background: "rgba(0,0,0,0.2)" }}
+                className="input-field"
             />
             <input 
                 type="email" placeholder="Email Address" required 
                 value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})}
                 style={{ background: "rgba(0,0,0,0.2)" }}
+                className="input-field"
             />
             <input 
                 type="password" placeholder="Password" required 
                 value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})}
                 style={{ background: "rgba(0,0,0,0.2)" }}
+                className="input-field"
             />
 
             <div>
@@ -99,6 +112,7 @@ export default function Register({ onSwitchToLogin }: { onSwitchToLogin: () => v
                 value={formData.role} 
                 onChange={e => setFormData({...formData, role: e.target.value})}
                 style={{ background: "rgba(0,0,0,0.2)" }}
+                className="input-field"
               >
                 <option value="manager">Company Manager (Employee)</option>
                 <option value="vendor">External Vendor</option>
@@ -113,6 +127,7 @@ export default function Register({ onSwitchToLogin }: { onSwitchToLogin: () => v
                   value={formData.company_id}
                   onChange={e => setFormData({...formData, company_id: e.target.value})}
                   style={{ background: "rgba(0,0,0,0.2)" }}
+                  className="input-field"
                 >
                   <option value="">-- Select Your Company --</option>
                   {companies.map((c: any) => <option key={c.id} value={c.id}>{c.name}</option>)}
@@ -120,18 +135,23 @@ export default function Register({ onSwitchToLogin }: { onSwitchToLogin: () => v
               </div>
             )}
 
-            {formData.role === 'vendor' && (
+            {formData.role === "vendor" && (
               <div className="fade-in">
-                <label style={{ display: "block", marginBottom: "0.5rem", fontSize: "0.85rem", color: "var(--text-secondary)", fontWeight: 500 }}>Claim Vendor Profile</label>
-                <select 
-                  required
-                  value={formData.vendor_id}
-                  onChange={e => setFormData({...formData, vendor_id: e.target.value})}
+                <label style={{ display: "block", marginBottom: "0.5rem", fontSize: "0.85rem", color: "var(--text-secondary)", fontWeight: 500 }}>
+                  Vendor Invite Code
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. X7B-9Q2"
+                  value={inviteCode}
+                  onChange={(e) => setInviteCode(e.target.value)}
                   style={{ background: "rgba(0,0,0,0.2)" }}
-                >
-                  <option value="">-- Select Vendor Profile --</option>
-                  {vendors.map((v: any) => <option key={v.id} value={v.id}>{v.name}</option>)}
-                </select>
+                  className="input-field"
+                  required
+                />
+                <p style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginTop: "4px" }}>
+                  Enter the code provided by your hiring manager.
+                </p>
               </div>
             )}
 

@@ -23,6 +23,7 @@ export interface Vendor {
   name: string;
   category: string;
   email: string;
+  invite_code?: string; // ✅ Added
   performance_score: number;
   risk_level: "LOW" | "MEDIUM" | "HIGH" | "UNKNOWN";
   company_id?: number | null;

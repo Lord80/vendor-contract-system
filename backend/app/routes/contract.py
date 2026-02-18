@@ -31,7 +31,7 @@ class SLAEventCreate(BaseModel):
     financial_impact: Optional[float] = 0.0
 
 @router.post("/upload")
-async def upload_contract(
+def upload_contract(
     vendor_id: int = Form(...),
     contract_name: str = Form(...),
     start_date: str = Form(...),

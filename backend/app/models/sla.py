@@ -26,9 +26,10 @@ class SLAEvent(Base):
     resolved = Column(Boolean, default=False)
 
     # Relationships
+    # We use backref here because 'sla_events' is likely NOT defined in Contract model yet.
     contract = relationship("Contract", backref="sla_events")
 
-    # Index for time-series queries (e.g., fetch all violations for contract X in last 30 days)
+    # Index for time-series queries
     __table_args__ = (
         Index('ix_sla_contract_date', 'contract_id', 'event_date'),
     )
@@ -56,4 +57,5 @@ class VendorPerformance(Base):
     recorded_at = Column(DateTime, default=datetime.utcnow)
 
     # Relationships
-    vendor = relationship("Vendor", backref="performance_history")
+    # ✅ FIX: Changed from 'backref' to 'back_populates' to match the Vendor model
+    vendor = relationship("Vendor", back_populates="performance_history")
