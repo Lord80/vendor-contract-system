@@ -1,61 +1,49 @@
 import { useEffect, useState } from 'react';
 import { api } from '../services/api';
 import { useAuth } from '../context/AuthContext';
-import { RiskBadge } from '../components/dashboard/RiskBadge';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, CartesianGrid } from 'recharts';
 import type { DashboardSummary, Vendor, Contract } from '../types';
+import { motion } from 'framer-motion';
+import { ArrowUpRight, ShieldAlert, FileText, Building2, Zap, Clock } from 'lucide-react';
+import { RiskBadge } from '../components/dashboard/RiskBadge';
 
-// Sleek Stat Card (Helper Component)
-const StatCard = ({ title, value, color = "blue", icon }: any) => {
-  const gradients: any = {
-    blue: "linear-gradient(135deg, rgba(59,130,246,0.1), rgba(59,130,246,0))",
-    green: "linear-gradient(135deg, rgba(16,185,129,0.1), rgba(16,185,129,0))",
-    red: "linear-gradient(135deg, rgba(239,68,68,0.1), rgba(239,68,68,0))",
-    yellow: "linear-gradient(135deg, rgba(245,158,11,0.1), rgba(245,158,11,0))"
-  };
-  const accentColor: any = {
-    blue: "var(--accent-blue)", green: "var(--success)", red: "var(--danger)", yellow: "var(--warning)"
-  };
-
-  return (
-    <div className="card" style={{ background: gradients[color], position: "relative", overflow: "hidden" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "start", position: "relative", zIndex: 1 }}>
-        <div>
-          <div style={{ fontSize: "0.8rem", color: "var(--text-secondary)", fontWeight: 600, letterSpacing: "0.5px", marginBottom: "4px" }}>
-            {title.toUpperCase()}
-          </div>
-          <div style={{ fontSize: "2.5rem", fontWeight: 800, color: "var(--text-primary)", lineHeight: 1 }}>{value}</div>
-        </div>
-        <div style={{ 
-          width: "40px", height: "40px", 
-          borderRadius: "10px", 
-          background: "rgba(255,255,255,0.05)", 
-          display: "flex", alignItems: "center", justifyContent: "center",
-          fontSize: "1.2rem",
-          color: accentColor[color],
-          border: "1px solid rgba(255,255,255,0.1)"
-        }}>
-          {icon}
-        </div>
+const BentoCard = ({ title, value, icon: Icon, delay, color }: any) => (
+  <motion.div 
+    initial={{ opacity: 0, y: 20 }}
+    animate={{ opacity: 1, y: 0 }}
+    transition={{ duration: 0.5, delay }}
+    className="holo-card"
+    style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}
+  >
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '1rem' }}>
+      <div style={{ 
+        width: '44px', height: '44px', borderRadius: '12px', 
+        background: `linear-gradient(135deg, ${color}20, ${color}05)`,
+        border: `1px solid ${color}40`,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        color: color, boxShadow: `0 0 15px ${color}15`
+      }}>
+        <Icon size={22} />
+      </div>
+      <div style={{ color: '#10b981', display: 'flex', alignItems: 'center', fontSize: '0.75rem', gap: '4px', background: "rgba(16,185,129,0.1)", padding: "2px 6px", borderRadius: "4px" }}>
+        +12% <ArrowUpRight size={12} />
       </div>
     </div>
-  );
-};
+    <div>
+      <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 700, letterSpacing: '1px', textTransform: 'uppercase' }}>{title}</div>
+      <div style={{ fontSize: '2.5rem', fontWeight: 800, color: 'var(--text-main)', lineHeight: 1.1, marginTop: '4px' }}>
+        {value}
+      </div>
+    </div>
+  </motion.div>
+);
 
-// Main Dashboard Component
 export default function Dashboard() {
   const { user } = useAuth();
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
   const [vendors, setVendors] = useState<Vendor[]>([]);
   const [contracts, setContracts] = useState<Contract[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [isTraining, setIsTraining] = useState(false);
-
-  // --- MODAL STATE ---
-  const [showModal, setShowModal] = useState(false);
-  const [newVendor, setNewVendor] = useState({ name: "", email: "", category: "Services" });
-  const [inviteCode, setInviteCode] = useState<string | null>(null);
-
+  
   useEffect(() => {
     async function loadData() {
       try {
@@ -67,34 +55,10 @@ export default function Dashboard() {
         setSummary(sum);
         setVendors(vend);
         setContracts(cont);
-      } catch (err) { console.error(err); } finally { setLoading(false); }
+      } catch (err) { console.error(err); }
     }
     loadData();
   }, []);
-
-  const handleCreateVendor = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-        const result = await api.createVendor(newVendor);
-        setInviteCode(result.invite_code || "ERROR");
-        const updatedVendors = await api.getTopVendors();
-        setVendors(updatedVendors);
-    } catch (err) {
-        alert("Failed to create vendor");
-    }
-  };
-
-  const handleRetrain = async () => {
-    if (!confirm("Retrain AI model? This may take a minute.")) return;
-    setIsTraining(true);
-    try { await api.trainModel(); alert("Training Started!"); } catch(e) { alert("Failed"); } finally { setIsTraining(false); }
-  };
-
-  if (loading) return (
-    <div style={{ display: "grid", gap: "2rem", padding: "2rem" }}>
-      <div className="skeleton" style={{ height: "300px" }} />
-    </div>
-  );
 
   const riskData = [
     { name: 'Low', value: summary?.risk_distribution.LOW || 0, color: '#10b981' },
@@ -103,182 +67,108 @@ export default function Dashboard() {
   ];
 
   return (
-    <div className="fade-in">
-      <header style={{ marginBottom: "3rem", display: "flex", justifyContent: "space-between", alignItems: "flex-end" }}>
+    <div style={{ paddingBottom: '4rem', maxWidth: 1200, margin: "0 auto" }}>
+      
+      {/* HEADER */}
+      <motion.div 
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        style={{ marginBottom: "2.5rem", display: "flex", justifyContent: "space-between", alignItems: "flex-end" }}
+      >
         <div>
-          <h1 style={{ fontSize: "2.2rem", fontWeight: 800, margin: "0 0 0.5rem 0", letterSpacing: "-1px" }}>
-            Welcome back, {user?.full_name.split(' ')[0]}
+          <h1 className="glow-text" style={{ fontSize: "2.5rem", fontWeight: 800, margin: "0 0 0.5rem 0", letterSpacing: "-1px" }}>
+            Command Center
           </h1>
-          <p style={{ color: "var(--text-secondary)", margin: 0, fontSize: "1.1rem" }}>Here's what's happening with your contracts today.</p>
+          <p style={{ color: "var(--text-muted)", margin: 0, fontSize: "1.1rem" }}>
+            System Status: <span style={{ color: '#10b981', fontWeight: 600 }}>● ONLINE</span>
+          </p>
         </div>
         
-        <div style={{ display: "flex", gap: "10px" }}>
-            {/* ADD VENDOR BUTTON */}
-            {(user?.role === 'manager' || user?.role === 'company_admin') && (
-                <button 
-                    onClick={() => setShowModal(true)} 
-                    className="btn-primary" 
-                    style={{ background: "var(--accent-blue)", display: "flex", alignItems: "center", gap: "8px" }}
-                >
-                    🏢 Add Vendor
-                </button>
-            )}
+        <button className="btn-primary-glow" style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+            <Zap size={18} fill="currentColor" /> Quick Analysis
+        </button>
+      </motion.div>
 
-            {user?.role === 'super_admin' && (
-            <button onClick={handleRetrain} disabled={isTraining} className="btn-primary" style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                {isTraining ? <span className="loader"></span> : "⚡"} Retrain AI
-            </button>
-            )}
-        </div>
-      </header>
-
-      {/* STATS */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: "1.5rem", marginBottom: "2.5rem" }}>
-        <StatCard title="Contracts" value={summary?.total_contracts} color="blue" icon="📄" />
-        <StatCard title="Critical" value={summary?.risk_distribution.HIGH} color="red" icon="⚠️" />
-        <StatCard title="Vendors" value={vendors.length} color="yellow" icon="🏢" />
-        <StatCard title="Safe" value={summary?.risk_distribution.LOW} color="green" icon="🛡️" />
+      {/* BENTO GRID STATS */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: "1.5rem", marginBottom: "2rem" }}>
+        <BentoCard title="TOTAL CONTRACTS" value={summary?.total_contracts || 0} icon={FileText} delay={0.1} color="#3b82f6" />
+        <BentoCard title="CRITICAL RISKS" value={summary?.risk_distribution.HIGH || 0} icon={ShieldAlert} delay={0.2} color="#ef4444" />
+        <BentoCard title="ACTIVE VENDORS" value={vendors.length} icon={Building2} delay={0.3} color="#f59e0b" />
+        <BentoCard title="SECURE DOCS" value={summary?.risk_distribution.LOW || 0} icon={ShieldAlert} delay={0.4} color="#10b981" />
       </div>
 
-      {/* --- PHASE 1 UPDATE: IMPROVED GRID LAYOUT --- */}
-      <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: "2rem", alignItems: "start" }}>
+      {/* MAIN CONTENT SPLIT */}
+      <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: "1.5rem" }}>
         
-        {/* LEFT COLUMN: Recent Activity & Risk Analytics (Stacked) */}
-        <div style={{ display: "flex", flexDirection: "column", gap: "2rem" }}>
+        {/* LEFT COLUMN */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
             
-            {/* RECENT ACTIVITY */}
-            <div className="card" style={{ minHeight: "300px" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "1.5rem" }}>
-                    <h3 style={{ margin: 0, fontSize: "1.1rem" }}>Recent Uploads</h3>
-                    <button className="btn-ghost" style={{ fontSize: "0.8rem", padding: "0.4rem 0.8rem" }}>View All</button>
-                </div>
-                <div style={{ display: "flex", flexDirection: "column", gap: "0.8rem" }}>
-                    {contracts.slice(0, 5).map(c => (
-                    <div key={c.id} style={{ 
-                        display: "flex", alignItems: "center", justifyContent: "space-between", 
-                        padding: "1rem", 
-                        background: "rgba(255,255,255,0.02)", 
-                        border: "1px solid rgba(255,255,255,0.05)",
-                        borderRadius: "10px"
-                    }}>
-                        <div style={{ display: "flex", gap: "1rem", alignItems: "center" }}>
-                        <div style={{ 
-                            width: "40px", height: "40px", borderRadius: "8px", 
-                            background: "rgba(30, 41, 59, 0.8)", border: "1px solid rgba(255,255,255,0.1)",
-                            display: "flex", alignItems: "center", justifyContent: "center"
-                        }}>📄</div>
-                        <div>
-                            <div style={{ fontWeight: 600, fontSize: "0.9rem", color: "var(--text-primary)" }}>{c.contract_name}</div>
-                            <div style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>Vendor #{c.vendor_id} • {c.end_date || 'No Date'}</div>
-                        </div>
-                        </div>
-                        <div style={{ textAlign: "right" }}>
-                        <RiskBadge level={c.risk_level} />
-                        </div>
-                    </div>
-                    ))}
-                </div>
-            </div>
-
-            {/* RISK ANALYTICS CHART */}
-            <div className="card">
-                <h3 style={{ margin: "0 0 1.5rem 0", fontSize: "1.1rem" }}>Risk Overview</h3>
-                <div style={{ height: "220px", width: "100%", marginBottom: "2rem" }}>
-                    <ResponsiveContainer>
-                    <BarChart data={riskData}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
-                        <XAxis dataKey="name" stroke="#64748b" fontSize={12} tickLine={false} axisLine={false} />
-                        <YAxis stroke="#64748b" fontSize={12} tickLine={false} axisLine={false} />
-                        <Tooltip 
-                        cursor={{fill: 'rgba(255,255,255,0.05)'}}
-                        contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #334155', borderRadius: '8px' }}
-                        itemStyle={{ color: '#f1f5f9' }}
-                        />
-                        <Bar dataKey="value" radius={[6, 6, 0, 0]} barSize={40}>
-                        {riskData.map((entry, index) => <Cell key={index} fill={entry.color} />)}
-                        </Bar>
-                    </BarChart>
+            {/* Chart */}
+            <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.5 }} className="holo-card" style={{ padding: '2rem' }}>
+                <h3 style={{ margin: "0 0 2rem 0", fontSize: "1.1rem", fontWeight: 700 }}>Risk Distribution Analysis</h3>
+                
+                {/* FIX: Gave Responsive Container a strict pixel height to prevent the -1 height warning */}
+                <div style={{ width: "100%", height: "280px" }}>
+                    <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={riskData}>
+                            <defs>
+                                <linearGradient id="colorHigh" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#ef4444" stopOpacity={0.8}/><stop offset="95%" stopColor="#ef4444" stopOpacity={0}/></linearGradient>
+                                <linearGradient id="colorMed" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#f59e0b" stopOpacity={0.8}/><stop offset="95%" stopColor="#f59e0b" stopOpacity={0}/></linearGradient>
+                                <linearGradient id="colorLow" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#10b981" stopOpacity={0.8}/><stop offset="95%" stopColor="#10b981" stopOpacity={0}/></linearGradient>
+                            </defs>
+                            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
+                            <XAxis dataKey="name" stroke="#64748b" tickLine={false} axisLine={false} />
+                            <YAxis stroke="#64748b" tickLine={false} axisLine={false} />
+                            <Tooltip cursor={{fill: 'rgba(255,255,255,0.05)'}} contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #1e293b', borderRadius: '12px' }} itemStyle={{ color: 'white' }} />
+                            <Bar dataKey="value" radius={[6, 6, 0, 0]} barSize={50}>
+                                {riskData.map((entry, index) => <Cell key={index} fill={`url(#color${entry.name})`} />)}
+                            </Bar>
+                        </BarChart>
                     </ResponsiveContainer>
                 </div>
-            </div>
+            </motion.div>
+
+            {/* Recent List */}
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.6 }} className="holo-card" style={{ padding: '0', overflow: 'hidden' }}>
+                <div style={{ padding: '1.2rem 1.5rem', borderBottom: '1px solid var(--glass-border)', background: 'rgba(255,255,255,0.02)' }}>
+                    <h3 style={{ margin: 0, fontSize: "1rem", fontWeight: 700 }}>Live Activity Feed</h3>
+                </div>
+                <div>
+                    {contracts.slice(0, 4).map((c, i) => (
+                        <div key={c.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1rem 1.5rem', borderBottom: '1px solid var(--glass-border)', transition: 'background 0.2s' }} className="hover:bg-white/5">
+                            <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                                <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: "var(--text-muted)" }}>
+                                    <Clock size={18} />
+                                </div>
+                                <div>
+                                    <div style={{ fontWeight: 600, color: 'var(--text-main)', fontSize: "0.9rem" }}>{c.contract_name}</div>
+                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-dim)' }}>Uploaded recently</div>
+                                </div>
+                            </div>
+                            <RiskBadge level={c.risk_level} />
+                        </div>
+                    ))}
+                </div>
+            </motion.div>
         </div>
 
-        {/* RIGHT COLUMN: Top Vendors (Full Height) */}
-        <div className="card" style={{ height: "100%" }}>
-            <h3 style={{ margin: "0 0 1.5rem 0", fontSize: "1.1rem" }}>Top Performing Vendors</h3>
-            <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-                {vendors.map((v, i) => (
-                <div key={v.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.8rem 0", borderBottom: i < vendors.length -1 ? "1px solid rgba(255,255,255,0.05)" : "none" }}>
-                    <span style={{ fontSize: "0.9rem" }}>{v.name}</span>
-                    <span style={{ fontSize: "0.9rem", fontWeight: "700", color: v.performance_score > 90 ? "var(--success)" : "var(--warning)" }}>
-                    {v.performance_score.toFixed(1)}
-                    </span>
-                </div>
+        {/* RIGHT COLUMN: VENDORS */}
+        <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.7 }} className="holo-card" style={{ height: '100%', padding: '1.5rem' }}>
+            <h3 style={{ margin: "0 0 1.5rem 0", fontSize: "1.1rem", fontWeight: 700 }}>Vendor Performance</h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                {vendors.map((v) => (
+                    <div key={v.id} style={{ padding: '1rem', borderRadius: '14px', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--glass-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                            <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: v.performance_score > 90 ? '#10b981' : '#f59e0b', boxShadow: `0 0 10px ${v.performance_score > 90 ? '#10b981' : '#f59e0b'}` }}></div>
+                            <span style={{ fontWeight: 600, fontSize: "0.9rem" }}>{v.name}</span>
+                        </div>
+                        <div style={{ fontFamily: 'monospace', fontWeight: 700, fontSize: "1rem" }}>{v.performance_score.toFixed(1)}</div>
+                    </div>
                 ))}
             </div>
-        </div>
+        </motion.div>
 
       </div>
-
-      {/* --- ADD VENDOR MODAL --- */}
-      {showModal && (
-        <div style={{
-            position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
-            background: "rgba(0,0,0,0.8)", backdropFilter: "blur(5px)",
-            display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100
-        }}>
-            <div className="card" style={{ width: "400px", border: "1px solid var(--border-highlight)" }}>
-                <h2 style={{ marginTop: 0 }}>Add New Vendor</h2>
-                
-                {!inviteCode ? (
-                    <form onSubmit={handleCreateVendor} style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-                        <div>
-                            <label style={{ display: "block", marginBottom: "0.5rem", fontSize: "0.9rem" }}>Vendor Name</label>
-                            <input 
-                                className="input-field" 
-                                required 
-                                value={newVendor.name}
-                                onChange={e => setNewVendor({...newVendor, name: e.target.value})}
-                                placeholder="e.g. Tech Solutions Inc"
-                            />
-                        </div>
-                        <div>
-                            <label style={{ display: "block", marginBottom: "0.5rem", fontSize: "0.9rem" }}>Contact Email</label>
-                            <input 
-                                className="input-field" 
-                                type="email"
-                                required 
-                                value={newVendor.email}
-                                onChange={e => setNewVendor({...newVendor, email: e.target.value})}
-                                placeholder="contact@vendor.com"
-                            />
-                        </div>
-                        <div style={{ display: "flex", gap: "1rem", marginTop: "1rem" }}>
-                            <button type="button" onClick={() => setShowModal(false)} className="btn-ghost" style={{ flex: 1 }}>Cancel</button>
-                            <button type="submit" className="btn-primary" style={{ flex: 1 }}>Create & Get Code</button>
-                        </div>
-                    </form>
-                ) : (
-                    <div style={{ textAlign: "center" }}>
-                        <div style={{ fontSize: "3rem", marginBottom: "1rem" }}>✅</div>
-                        <p>Vendor Profile Created!</p>
-                        <p style={{ color: "var(--text-secondary)", fontSize: "0.9rem" }}>Share this Invite Code with the vendor to register:</p>
-                        <div style={{ 
-                            background: "rgba(16, 185, 129, 0.1)", border: "1px solid var(--success)", 
-                            color: "var(--success)", padding: "1rem", fontSize: "1.5rem", fontWeight: "bold",
-                            letterSpacing: "2px", borderRadius: "8px", margin: "1rem 0"
-                        }}>
-                            {inviteCode}
-                        </div>
-                        <button onClick={() => { setShowModal(false); setInviteCode(null); setNewVendor({ name: "", email: "", category: "Services" }); }} className="btn-primary" style={{ width: "100%" }}>
-                            Done
-                        </button>
-                    </div>
-                )}
-            </div>
-        </div>
-      )}
-
     </div>
   );
 }

@@ -1,54 +1,43 @@
 import React from 'react';
+import { motion } from 'framer-motion';
 
 interface StatCardProps {
   title: string;
   value: string | number;
   icon?: React.ReactNode;
-  color?: "blue" | "green" | "red" | "yellow";
+  color?: string; // Expecting Hex
+  delay?: number;
 }
 
-export const StatCard: React.FC<StatCardProps> = ({ title, value, color = "blue", icon }) => {
-  
-  const gradients: Record<string, string> = {
-    blue: "linear-gradient(135deg, rgba(59,130,246,0.1), rgba(59,130,246,0))",
-    green: "linear-gradient(135deg, rgba(16,185,129,0.1), rgba(16,185,129,0))",
-    red: "linear-gradient(135deg, rgba(239,68,68,0.1), rgba(239,68,68,0))",
-    yellow: "linear-gradient(135deg, rgba(245,158,11,0.1), rgba(245,158,11,0))"
-  };
-
-  const accentColor: Record<string, string> = {
-    blue: "var(--accent-blue)",
-    green: "var(--success)",
-    red: "var(--danger)",
-    yellow: "var(--warning)"
-  };
-
+export const StatCard: React.FC<StatCardProps> = ({ title, value, icon, color = "#3b82f6", delay = 0 }) => {
   return (
-    <div className="card fade-in" style={{ background: gradients[color], position: "relative", overflow: "hidden" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "start", position: "relative", zIndex: 1 }}>
-        <div>
-          <div style={{ fontSize: "0.8rem", color: "var(--text-secondary)", fontWeight: 600, letterSpacing: "0.5px", marginBottom: "4px" }}>
-            {title.toUpperCase()}
-          </div>
-          <div style={{ fontSize: "2.2rem", fontWeight: 800, color: "var(--text-primary)", lineHeight: 1 }}>
-            {value}
-          </div>
+    <motion.div 
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5, delay }}
+      className="holo-card"
+      style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}
+    >
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '1rem' }}>
+        <div style={{ 
+          width: '48px', height: '48px', borderRadius: '12px', 
+          background: `linear-gradient(135deg, ${color}20, ${color}05)`, 
+          border: `1px solid ${color}40`,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          color: color,
+          boxShadow: `0 0 20px ${color}15`
+        }}>
+          {icon}
         </div>
-        
-        {icon && (
-            <div style={{ 
-                width: "40px", height: "40px", 
-                borderRadius: "10px", 
-                background: "rgba(255,255,255,0.05)", 
-                display: "flex", alignItems: "center", justifyContent: "center",
-                fontSize: "1.2rem",
-                color: accentColor[color],
-                border: "1px solid rgba(255,255,255,0.1)"
-            }}>
-                {icon}
-            </div>
-        )}
       </div>
-    </div>
+      <div>
+        <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 700, letterSpacing: '1px', textTransform: 'uppercase', marginBottom: "4px" }}>
+          {title}
+        </div>
+        <div style={{ fontSize: '2.2rem', fontWeight: 800, color: 'var(--text-main)', lineHeight: 1.1, letterSpacing: "-1px" }}>
+          {value}
+        </div>
+      </div>
+    </motion.div>
   );
 };

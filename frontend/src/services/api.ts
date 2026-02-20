@@ -14,7 +14,7 @@ async function handleResponse<T>(response: Response): Promise<T> {
   if (!response.ok) {
     if (response.status === 401) {
       localStorage.clear();
-      window.location.href = "/"; // Redirect to login
+      window.location.href = "/";
     }
     const error = await response.json().catch(() => ({ detail: "Unknown Error" }));
     throw new Error(error.detail || `API Error: ${response.status}`);
@@ -68,13 +68,12 @@ export const api = {
   // --- Vendors ---
   getTopVendors: () => fetch(`${API_BASE}/vendors/top`, { headers: getAuthHeaders() }).then(handleResponse<Vendor[]>),
   
-  // ✅ NEW: Create Vendor
   createVendor: (data: { name: string; category: string; email: string }) => 
     fetch(`${API_BASE}/vendors/`, { 
       method: 'POST', 
       headers: getAuthHeaders(), 
       body: JSON.stringify(data) 
-    }).then(handleResponse<Vendor>), // Uses updated Vendor type
+    }).then(handleResponse<Vendor>),
 
   getAllVendors: () => fetch(`${API_BASE}/vendors/`, { headers: getAuthHeaders() }).then(handleResponse<Vendor[]>),
 
