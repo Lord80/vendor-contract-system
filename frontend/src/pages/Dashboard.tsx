@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, CartesianGrid } from 'recharts';
 import type { DashboardSummary, Vendor, Contract } from '../types';
 import { motion } from 'framer-motion';
-import { ArrowUpRight, ShieldAlert, FileText, Building2, Zap, Clock } from 'lucide-react';
+import { ArrowUpRight, ShieldAlert, FileText, Building2, Clock } from 'lucide-react';
 import { RiskBadge } from '../components/dashboard/RiskBadge';
 
 const BentoCard = ({ title, value, icon: Icon, delay, color }: any) => (
@@ -17,11 +17,12 @@ const BentoCard = ({ title, value, icon: Icon, delay, color }: any) => (
   >
     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '1rem' }}>
       <div style={{ 
-        width: '44px', height: '44px', borderRadius: '12px', 
-        background: `linear-gradient(135deg, ${color}20, ${color}05)`,
+        width: '48px', height: '48px', borderRadius: '12px', 
+        background: `linear-gradient(135deg, ${color}20, ${color}05)`, 
         border: `1px solid ${color}40`,
         display: 'flex', alignItems: 'center', justifyContent: 'center',
-        color: color, boxShadow: `0 0 15px ${color}15`
+        color: color,
+        boxShadow: `0 0 20px ${color}15`
       }}>
         <Icon size={22} />
       </div>
@@ -30,8 +31,10 @@ const BentoCard = ({ title, value, icon: Icon, delay, color }: any) => (
       </div>
     </div>
     <div>
-      <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 700, letterSpacing: '1px', textTransform: 'uppercase' }}>{title}</div>
-      <div style={{ fontSize: '2.5rem', fontWeight: 800, color: 'var(--text-main)', lineHeight: 1.1, marginTop: '4px' }}>
+      <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 700, letterSpacing: '1px', textTransform: 'uppercase', marginBottom: "4px" }}>
+        {title}
+      </div>
+      <div style={{ fontSize: '2.2rem', fontWeight: 800, color: 'var(--text-main)', lineHeight: 1.1, letterSpacing: "-1px" }}>
         {value}
       </div>
     </div>
@@ -69,7 +72,7 @@ export default function Dashboard() {
   return (
     <div style={{ paddingBottom: '4rem', maxWidth: 1200, margin: "0 auto" }}>
       
-      {/* HEADER */}
+      {/* HEADER (Button Removed) */}
       <motion.div 
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -83,10 +86,6 @@ export default function Dashboard() {
             System Status: <span style={{ color: '#10b981', fontWeight: 600 }}>● ONLINE</span>
           </p>
         </div>
-        
-        <button className="btn-primary-glow" style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-            <Zap size={18} fill="currentColor" /> Quick Analysis
-        </button>
       </motion.div>
 
       {/* BENTO GRID STATS */}
@@ -103,11 +102,9 @@ export default function Dashboard() {
         {/* LEFT COLUMN */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
             
-            {/* Chart */}
+            {/* CHART CONTAINER */}
             <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.5 }} className="holo-card" style={{ padding: '2rem' }}>
                 <h3 style={{ margin: "0 0 2rem 0", fontSize: "1.1rem", fontWeight: 700 }}>Risk Distribution Analysis</h3>
-                
-                {/* FIX: Gave Responsive Container a strict pixel height to prevent the -1 height warning */}
                 <div style={{ width: "100%", height: "280px" }}>
                     <ResponsiveContainer width="100%" height="100%">
                         <BarChart data={riskData}>

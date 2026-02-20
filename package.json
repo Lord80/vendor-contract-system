@@ -1,0 +1,26 @@
+{
+  "name": "ai-vendor-contract-system",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start:frontend": "cd frontend && npm run dev",
+    "start:backend": "cd backend && myenv\\Scripts\\uvicorn app.main:app --reload",
+    "dev": "concurrently -c \"magenta,cyan\" -n \"BACKEND,FRONTEND\" \"npm run start:backend\" \"npm run start:frontend\""
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Lord80/vendor-contract-system.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/Lord80/vendor-contract-system/issues"
+  },
+  "homepage": "https://github.com/Lord80/vendor-contract-system#readme",
+  "devDependencies": {
+    "concurrently": "^9.2.1"
+  }
+}
