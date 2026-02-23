@@ -1,6 +1,6 @@
-import sys
 import logging
 import time
+import threading
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -8,17 +8,19 @@ logger = logging.getLogger(__name__)
 
 class AIServices:
     """
-    Singleton manager for AI models to ensure they are loaded only once.
+    Thread-safe Singleton manager for AI models to ensure they are loaded only once.
     """
     _instance = None
+    _lock = threading.Lock() # Prevents race conditions during startup
 
     def __new__(cls):
-        if cls._instance is None:
-            cls._instance = super(AIServices, cls).__new__(cls)
-            cls._instance.nlp_classifier = None
-            cls._instance.risk_model = None
-            cls._instance.similarity_engine = None
-            cls._instance.load_models()
+        with cls._lock:
+            if cls._instance is None:
+                cls._instance = super(AIServices, cls).__new__(cls)
+                cls._instance.nlp_classifier = None
+                cls._instance.risk_model = None
+                cls._instance.similarity_engine = None
+                cls._instance.load_models()
         return cls._instance
 
     def load_models(self):
@@ -31,7 +33,7 @@ class AIServices:
             self.nlp_classifier = LegalBERTClassifier()
             logger.info("✅ LegalBERT Loaded")
         except Exception as e:
-            logger.error(f"⚠️ LegalBERT Failed: {e}")
+            logger.error(f"⚠️ LegalBERT Failed: {e}", exc_info=True)
 
         # 2. Load Risk Model
         try:
@@ -39,7 +41,7 @@ class AIServices:
             self.risk_model = RiskPredictionModel()
             logger.info("✅ XGBoost Risk Model Loaded")
         except Exception as e:
-            logger.error(f"⚠️ Risk Model Failed: {e}")
+            logger.error(f"⚠️ Risk Model Failed: {e}", exc_info=True)
 
         # 3. Load Vector DB
         try:
@@ -47,7 +49,7 @@ class AIServices:
             self.similarity_engine = ContractSimilarityEngine()
             logger.info("✅ Vector Database (FAISS) Loaded")
         except Exception as e:
-            logger.error(f"⚠️ Similarity Engine Failed: {e}")
+            logger.error(f"⚠️ Similarity Engine Failed: {e}", exc_info=True)
 
         elapsed = time.time() - start_time
         logger.info(f"🚀 AI System Ready in {elapsed:.2f}s")
@@ -55,7 +57,7 @@ class AIServices:
 # Initialize Singleton
 ai_services = AIServices()
 
-# Export variables for backward compatibility with existing imports
+# Export variables 
 nlp_classifier = ai_services.nlp_classifier
 risk_model = ai_services.risk_model
 similarity_engine = ai_services.similarity_engine

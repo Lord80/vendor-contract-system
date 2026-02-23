@@ -3,34 +3,30 @@ import numpy as np
 from prophet import Prophet
 from typing import Dict, List, Any
 from datetime import datetime, timedelta
+import logging
+
+logger = logging.getLogger(__name__)
 
 class SLAForecaster:
-    """
-    Forecast SLA violations using Prophet.
-    """
+    """Forecast SLA violations using Prophet."""
     
     def prepare_sla_data(self, events: List[Dict]) -> pd.DataFrame:
         if not events: return pd.DataFrame()
-        
         df = pd.DataFrame(events)
-        
-        # Flexible date parsing
         df['event_date'] = pd.to_datetime(df['event_date'])
-        
         df.set_index('event_date', inplace=True)
-        
-        # Resample to daily counts
-        # Only count 'violations' (ignore 'near_miss' for strict forecasting)
         daily_violations = df[df['event_type'] == 'violation'].resample('D').size()
-        
-        # Reindex to fill missing days with 0
         idx = pd.date_range(start=daily_violations.index.min(), end=daily_violations.index.max(), freq='D')
         daily_violations = daily_violations.reindex(idx, fill_value=0)
-        
         return daily_violations.to_frame(name='violations').reset_index()
     
     def forecast_violations_prophet(self, sla_data: pd.DataFrame, periods: int = 30) -> Dict[str, Any]:
         if len(sla_data) < 14:
+            return self._fallback_forecast(periods)
+            
+        # 🛡️ Protection against Prophet crashing on zero-variance data
+        if sla_data['violations'].nunique() <= 1:
+            logger.info("SLA Data lacks variance (all 0s). Skipping Prophet fitting.")
             return self._fallback_forecast(periods)
         
         df = sla_data.copy()
@@ -43,15 +39,17 @@ class SLAForecaster:
                 yearly_seasonality=False,
                 changepoint_prior_scale=0.05
             )
-            model.fit(df)
+            # Suppress Prophet's extremely noisy console output
+            import logging as prophet_logging
+            prophet_logging.getLogger('prophet').setLevel(prophet_logging.ERROR)
             
+            model.fit(df)
             future = model.make_future_dataframe(periods=periods)
             forecast = model.predict(future)
             
-            # Extract only future predictions
             future_forecast = forecast.tail(periods)
-            
             predictions = []
+            
             for _, row in future_forecast.iterrows():
                 predictions.append({
                     'date': row['ds'].strftime('%Y-%m-%d'),
@@ -59,7 +57,6 @@ class SLAForecaster:
                     'confidence': 'high' if (row['yhat_upper'] - row['yhat_lower']) < 1.0 else 'medium'
                 })
             
-            # Risk Logic
             avg_pred = future_forecast['yhat'].mean()
             risk_level = "HIGH" if avg_pred > 0.5 else "MEDIUM" if avg_pred > 0.1 else "LOW"
             
@@ -70,7 +67,7 @@ class SLAForecaster:
             }
             
         except Exception as e:
-            print(f"Prophet forecasting failed: {e}")
+            logger.error(f"Prophet forecasting failed: {e}")
             return self._fallback_forecast(periods)
 
     def _fallback_forecast(self, periods: int) -> Dict[str, Any]:

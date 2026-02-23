@@ -11,14 +11,12 @@ from app.models.vendor import Vendor
 from app.schemas.user_schema import UserCreate, UserResponse, Token
 from app.schemas.vendor_schema import VendorRegisterRequest
 
-# ✅ FIX: Import 'settings' for config, and only functions from 'security'
 from app.config import settings
 from app.core.security import get_password_hash, verify_password, create_access_token
 from jose import JWTError, jwt
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
-
 
 def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
     credentials_exception = HTTPException(
@@ -27,7 +25,6 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
         headers={"WWW-Authenticate": "Bearer"},
     )
     try:
-        # ✅ FIX: Use settings.SECRET_KEY and settings.ALGORITHM
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
         email: str = payload.get("sub")
         if email is None:
@@ -42,44 +39,42 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
 
 @router.post("/register", response_model=UserResponse)
 def register_user(user: UserCreate, db: Session = Depends(get_db)):
-    # 1. Email Uniqueness Check
     if db.query(User).filter(User.email == user.email).first():
         raise HTTPException(status_code=400, detail="Email already registered")
 
-    # 2. Role Validation & Integrity Checks
     if user.role in ["super_admin", "company_admin", "admin"]:
         raise HTTPException(status_code=403, detail="Admins must be created by the Super Admin.")
 
     if user.role == "manager":
         if not user.company_id:
             raise HTTPException(status_code=400, detail="Managers must be linked to a company.")
-        # Validate Company Exists
         if not db.query(Company).filter(Company.id == user.company_id).first():
             raise HTTPException(status_code=404, detail="Company not found.")
 
     if user.role == "vendor":
         if not user.vendor_id:
             raise HTTPException(status_code=400, detail="Vendor users must link to a vendor profile.")
-        # Validate Vendor Exists
         vendor = db.query(Vendor).filter(Vendor.id == user.vendor_id).first()
         if not vendor:
             raise HTTPException(status_code=404, detail="Vendor profile not found.")
-        # Auto-link vendor user to the vendor's company for easier querying
         user.company_id = vendor.company_id
 
-    # 3. Create User
-    new_user = User(
-        email=user.email,
-        hashed_password=get_password_hash(user.password),
-        full_name=user.full_name,
-        role=user.role,
-        vendor_id=user.vendor_id,
-        company_id=user.company_id
-    )
-    db.add(new_user)
-    db.commit()
-    db.refresh(new_user)
-    return new_user
+    try:
+        new_user = User(
+            email=user.email,
+            hashed_password=get_password_hash(user.password),
+            full_name=user.full_name,
+            role=user.role,
+            vendor_id=user.vendor_id,
+            company_id=user.company_id
+        )
+        db.add(new_user)
+        db.commit()
+        db.refresh(new_user)
+        return new_user
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail="Failed to create user.")
 
 @router.post("/login", response_model=Token)
 def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
@@ -91,7 +86,6 @@ def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db:
             headers={"WWW-Authenticate": "Bearer"},
         )
     
-    # ✅ FIX: Use settings.ACCESS_TOKEN_EXPIRE_MINUTES
     access_token = create_access_token(
         data={
             "sub": user.email, 

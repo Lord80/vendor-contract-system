@@ -1,132 +1,24 @@
 [
   {
     "id": 0,
-    "clause_type": "termination",
-    "source_contract": "sample_library",
+    "clause_type": "liability",
+    "source_contract": "Data Governance and Information Security Framework Agreement",
     "risk_level": "LOW",
     "tags": [
-      "sample",
-      "best_practice"
+      "Globex Financial Services"
     ],
-    "added_date": "2026-01-18T10:16:24.432530",
-    "length_chars": 79,
-    "length_words": 12
+    "added_date": "2026-02-23T11:31:11.408335",
+    "length_chars": 111
   },
   {
     "id": 1,
-    "clause_type": "termination",
-    "source_contract": "sample_library",
+    "clause_type": "governing_law",
+    "source_contract": "Data Governance and Information Security Framework Agreement",
     "risk_level": "LOW",
     "tags": [
-      "sample",
-      "best_practice"
+      "Globex Financial Services"
     ],
-    "added_date": "2026-01-18T10:16:24.480423",
-    "length_chars": 82,
-    "length_words": 13
-  },
-  {
-    "id": 2,
-    "clause_type": "termination",
-    "source_contract": "sample_library",
-    "risk_level": "HIGH",
-    "tags": [
-      "sample",
-      "best_practice"
-    ],
-    "added_date": "2026-01-18T10:16:24.529580",
-    "length_chars": 85,
-    "length_words": 12
-  },
-  {
-    "id": 3,
-    "clause_type": "payment",
-    "source_contract": "sample_library",
-    "risk_level": "LOW",
-    "tags": [
-      "sample",
-      "best_practice"
-    ],
-    "added_date": "2026-01-18T10:16:24.583717",
-    "length_chars": 65,
-    "length_words": 11
-  },
-  {
-    "id": 4,
-    "clause_type": "payment",
-    "source_contract": "sample_library",
-    "risk_level": "MEDIUM",
-    "tags": [
-      "sample",
-      "best_practice"
-    ],
-    "added_date": "2026-01-18T10:16:24.628756",
-    "length_chars": 65,
-    "length_words": 12
-  },
-  {
-    "id": 5,
-    "clause_type": "sla",
-    "source_contract": "sample_library",
-    "risk_level": "LOW",
-    "tags": [
-      "sample",
-      "best_practice"
-    ],
-    "added_date": "2026-01-18T10:16:24.678586",
-    "length_chars": 58,
-    "length_words": 7
-  },
-  {
-    "id": 6,
-    "clause_type": "penalty",
-    "source_contract": "sample_library",
-    "risk_level": "HIGH",
-    "tags": [
-      "sample",
-      "best_practice"
-    ],
-    "added_date": "2026-01-18T10:16:24.716646",
-    "length_chars": 71,
-    "length_words": 13
-  },
-  {
-    "id": 7,
-    "clause_type": "renewal",
-    "source_contract": "sample_library",
-    "risk_level": "MEDIUM",
-    "tags": [
-      "sample",
-      "best_practice"
-    ],
-    "added_date": "2026-01-18T10:16:24.765682",
-    "length_chars": 71,
-    "length_words": 9
-  },
-  {
-    "id": 8,
-    "clause_type": "confidentiality",
-    "source_contract": "sample_library",
-    "risk_level": "LOW",
-    "tags": [
-      "sample",
-      "best_practice"
-    ],
-    "added_date": "2026-01-18T10:16:24.815217",
-    "length_chars": 77,
-    "length_words": 10
-  },
-  {
-    "id": 9,
-    "clause_type": "indemnification",
-    "source_contract": "sample_library",
-    "risk_level": "MEDIUM",
-    "tags": [
-      "sample",
-      "best_practice"
-    ],
-    "added_date": "2026-01-18T10:16:24.864255",
-    "length_chars": 78,
-    "length_words": 13
+    "added_date": "2026-02-23T11:31:11.441156",
+    "length_chars": 28
   }
 ]

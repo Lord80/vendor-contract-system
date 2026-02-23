@@ -1,12 +1,15 @@
 import numpy as np
 import re
+import logging
 from typing import Dict, List, Any
-from datetime import datetime
+from datetime import datetime, date
+
+logger = logging.getLogger(__name__)
 
 class ContractFeatureExtractor:
     """
     Extract features from contracts for ML model training.
-    Optimized for performance with pre-compiled regex.
+    Optimized for performance with pre-compiled regex and deterministic ordering.
     """
     
     def __init__(self):
@@ -32,24 +35,27 @@ class ContractFeatureExtractor:
         clauses = contract_data.get("extracted_clauses") or {}
         entities = contract_data.get("entities") or {}
         
-        features = {}
+        raw_features = {}
         
-        features.update(self._extract_text_features(text))
-        features.update(self._extract_clause_features(clauses))
-        features.update(self._extract_entity_features(entities))
-        features.update(self._extract_structural_features(text))
+        raw_features.update(self._extract_text_features(text))
+        raw_features.update(self._extract_clause_features(clauses))
+        raw_features.update(self._extract_entity_features(entities))
+        raw_features.update(self._extract_structural_features(text))
         
-        # Safely handle dates
+        # Safely handle dates (can be strings or datetime.date objects)
         start = contract_data.get("start_date")
         end = contract_data.get("end_date")
         if start and end:
-            features.update(self._extract_temporal_features(str(start), str(end)))
+            raw_features.update(self._extract_temporal_features(start, end))
         else:
-            features["contract_duration_days"] = 365.0
-            features["contract_duration_years"] = 1.0
+            raw_features["contract_duration_days"] = 365.0
+            raw_features["contract_duration_years"] = 1.0
         
-        self.feature_names = list(features.keys())
-        return features
+        # 🛡️ CRITICAL FIX: Sort features alphabetically to guarantee deterministic ordering for XGBoost
+        deterministic_features = {k: float(raw_features[k]) for k in sorted(raw_features.keys())}
+        self.feature_names = list(deterministic_features.keys())
+        
+        return deterministic_features
     
     def _extract_text_features(self, text: str) -> Dict[str, float]:
         features = {}
@@ -101,8 +107,8 @@ class ContractFeatureExtractor:
                     money_values.extend([float(num) for num in numbers])
             
         if money_values:
-            features["max_money_value"] = max(money_values)
-            features["avg_money_value"] = np.mean(money_values)
+            features["max_money_value"] = float(max(money_values))
+            features["avg_money_value"] = float(np.mean(money_values))
         else:
             features["max_money_value"] = 0.0
             features["avg_money_value"] = 0.0
@@ -116,24 +122,31 @@ class ContractFeatureExtractor:
         features["has_tables"] = 1.0 if ("|" in text and "---" in text) else 0.0
         
         text_lower = text.lower()
-        features["definition_count"] = sum(text_lower.count(p) for p in self.definition_patterns)
+        features["definition_count"] = float(sum(text_lower.count(p) for p in self.definition_patterns))
         
         return features
     
-    def _extract_temporal_features(self, start_date: str, end_date: str) -> Dict[str, float]:
+    def _extract_temporal_features(self, start_date: Any, end_date: Any) -> Dict[str, float]:
         features = {}
         try:
-            # Handle possible datetime formats or ISO strings
-            start = datetime.fromisoformat(start_date) if 'T' in start_date else datetime.strptime(start_date, "%Y-%m-%d")
-            end = datetime.fromisoformat(end_date) if 'T' in end_date else datetime.strptime(end_date, "%Y-%m-%d")
+            # Safely parse SQLAlchemy date objects or ISO strings
+            def parse_date(d):
+                if isinstance(d, (datetime, date)):
+                    return d
+                if 'T' in d:
+                    return datetime.fromisoformat(d).date()
+                return datetime.strptime(d, "%Y-%m-%d").date()
+
+            start = parse_date(start_date)
+            end = parse_date(end_date)
             
             duration_days = (end - start).days
-            # Normalize negative durations
-            duration_days = max(1, duration_days) 
+            duration_days = max(1, duration_days) # Normalize negative durations
             
             features["contract_duration_days"] = float(duration_days)
             features["contract_duration_years"] = float(duration_days / 365.25)
-        except Exception:
+        except Exception as e:
+            logger.warning(f"Failed to parse dates for ML feature extraction: {e}")
             features["contract_duration_days"] = 365.0
             features["contract_duration_years"] = 1.0
         

@@ -1,6 +1,16 @@
-from fastapi import FastAPI
+import sys
+import io
+
+if sys.stdout.encoding.lower() != 'utf-8':
+    sys.stdout.reconfigure(encoding='utf-8')
+if sys.stderr.encoding.lower() != 'utf-8':
+    sys.stderr.reconfigure(encoding='utf-8')
+
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
+import logging
 
 from app.config import settings
 from app.database import engine, Base
@@ -11,12 +21,18 @@ from app.routes.similarity_routes import router as similarity_router
 from app.routes.ml_routes import router as ml_router
 from app.routes.forecasting_routes import router as forecasting_router
 
+logger = logging.getLogger(__name__)
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # In production, use Alembic for migrations instead of create_all
+    # Startup
+    logger.info("Starting up Enterprise AI System...")
     if settings.DEBUG:
         Base.metadata.create_all(bind=engine)
     yield
+    # Shutdown (Frees up memory and connections)
+    logger.info("Shutting down system, disposing database engine...")
+    engine.dispose()
 
 app = FastAPI(
     title="AI Vendor & Contract Management System",
@@ -32,6 +48,16 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# --- GLOBAL EXCEPTION HANDLERS ---
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    """Prevents the server from crashing and returns clean JSON to React."""
+    logger.error(f"Unhandled Exception on {request.url}: {exc}", exc_info=True)
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "An unexpected internal server error occurred. Please try again later."}
+    )
 
 # Router Registration
 app.include_router(auth.router)

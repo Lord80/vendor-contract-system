@@ -10,35 +10,27 @@ def calculate_vendor_score(
     2. Operational Performance (60% Weight) - Do they actually deliver?
     """
     
-    # 1. Contract Risk Component (0-100, where 100 is Low Risk)
+    # 1. Contract Risk Component (0-100, where 100 is Low Risk / Safe)
     if not contracts:
-        contract_score = 50.0 # Neutral start
-        avg_risk = 0
+        contract_score = 50.0 # Neutral start for new vendors
     else:
         # Convert risk scores (usually 0-100 where 100 is High Risk) to Safety Score
-        # If risk_score is High (e.g. 90), Safety is 10.
-        total_risk = sum(c.risk_score for c in contracts)
+        total_risk = sum(getattr(c, 'risk_score', 50) for c in contracts)
         avg_risk = total_risk / len(contracts)
-        contract_score = max(0, 100 - avg_risk)
+        contract_score = max(0.0, min(100.0, 100.0 - avg_risk))
 
     # 2. Performance Component (0-100)
-    # If no performance data exists, we assume neutral/good standing (75) to give benefit of doubt
     if not performance_records:
-        perf_score = 75.0
+        perf_score = 75.0 # Benefit of doubt for vendors with no SLA violations yet
     else:
-        # Weighted average of recent performance
-        # (Assuming performance_records have an 'overall_score' attribute)
-        scores = [p.overall_score for p in performance_records]
-        perf_score = sum(scores) / len(scores)
+        scores = [getattr(p, 'overall_score', 75) for p in performance_records]
+        perf_score = sum(scores) / len(scores) if scores else 75.0
 
-    # 3. Composite Calculation
-    # We weight Performance higher than Contract Terms because execution matters more
+    # 3. Composite Calculation (Weighted Average)
     final_score = (contract_score * 0.4) + (perf_score * 0.6)
+    final_score = round(max(0.0, min(100.0, final_score)), 1)
     
-    # Rounding
-    final_score = round(final_score, 1)
-    
-    # Determine Risk Level based on Score
+    # Determine Risk Level based on Final Score
     if final_score >= 80:
         vendor_risk = "LOW"
     elif final_score >= 50:

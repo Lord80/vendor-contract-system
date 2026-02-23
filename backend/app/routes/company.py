@@ -1,4 +1,5 @@
-from fastapi import APIRouter, Depends, HTTPException
+import logging
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List
 
@@ -9,9 +10,9 @@ from app.schemas.company_schema import CompanyCreate, CompanyResponse
 from app.routes.auth import get_current_user
 from app.core.security import get_password_hash 
 
+logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/companies", tags=["Companies"])
 
-# 1. Create a New Company (Super Admin Only)
 @router.post("/", response_model=CompanyResponse)
 def create_company(
     company_data: CompanyCreate, 
@@ -20,24 +21,22 @@ def create_company(
 ):
     # Security Check
     if current_user.role != "super_admin":
-        raise HTTPException(status_code=403, detail="Only Super Admin can create companies")
+        logger.warning(f"Unauthorized company creation attempt by {current_user.email}")
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only Super Admin can create companies")
 
-    # Check if company name exists
+    # Check for duplicates
     if db.query(Company).filter(Company.name == company_data.name).first():
-        raise HTTPException(status_code=400, detail="Company name already taken")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Company name already taken")
 
-    # Check if admin email exists (prevent duplicate user emails)
     if db.query(User).filter(User.email == company_data.admin_email).first():
-        raise HTTPException(status_code=400, detail="Admin email already in use")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Admin email already in use")
 
     try:
         # Atomic Transaction Start
-        # 1. Create Company
         new_company = Company(name=company_data.name)
         db.add(new_company)
-        db.flush() # Flush generates the ID without committing transaction
+        db.flush() # Generates the ID without committing transaction
 
-        # 2. Create Company Admin User
         new_admin = User(
             email=company_data.admin_email,
             full_name=company_data.admin_name,
@@ -48,14 +47,16 @@ def create_company(
         )
         db.add(new_admin)
         
-        # Commit everything together. If this fails, EVERYTHING rolls back.
+        # Commit everything together
         db.commit()
         db.refresh(new_company)
+        logger.info(f"Successfully created new tenant company: {new_company.name}")
         return new_company
 
     except Exception as e:
-        db.rollback() # Ensure database stays clean on error
-        raise HTTPException(status_code=500, detail=f"Failed to create company: {str(e)}")
+        db.rollback() # Failsafe: Revert both company and admin creation
+        logger.error(f"Failed to create company {company_data.name}: {e}", exc_info=True)
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Database transaction failed")
 
 @router.get("/", response_model=List[CompanyResponse])
 def get_companies(db: Session = Depends(get_db)):

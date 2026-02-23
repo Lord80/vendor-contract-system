@@ -1,4 +1,5 @@
-from fastapi import APIRouter, HTTPException, Depends
+import logging
+from fastapi import APIRouter, HTTPException, Depends, status
 from sqlalchemy.orm import Session
 from typing import Dict, Any, List
 from datetime import datetime, timedelta
@@ -8,14 +9,12 @@ from app.database import get_db
 from app.models.contract import Contract
 from app.models.vendor import Vendor
 from app.models.user import User
-from app.routes.auth import get_current_user # ✅ REQUIRED for Security
+from app.routes.auth import get_current_user 
 from app.services.time_series.forecasting import SLAForecaster 
-# Note: Ensure you have the SLAForecaster class in app/services/time_series/forecasting.py
-# If not, you can move the class logic directly here or into app/services/ai_loader.py
 
+logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/forecast", tags=["Forecasting"])
 
-# Initialize forecaster
 forecaster = SLAForecaster()
 
 @router.get("/sla/violations/{contract_id}")
@@ -23,19 +22,17 @@ def forecast_sla_violations(
     contract_id: int,
     days_ahead: int = 30,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user) # ✅ Security Injection
+    current_user: User = Depends(get_current_user)
 ):
     contract = db.query(Contract).filter(Contract.id == contract_id).first()
     
     if not contract:
-        raise HTTPException(status_code=404, detail="Contract not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Contract not found")
     
-    # 🔒 SECURITY CHECK: Tenant Isolation
-    if current_user.role != "super_admin":
-        if contract.company_id != current_user.company_id:
-            raise HTTPException(status_code=403, detail="Access denied to this contract forecast")
+    # 🔒 Security Check
+    if current_user.role != "super_admin" and contract.company_id != current_user.company_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied to this contract forecast")
 
-    # Fetch real events
     from app.models.sla import SLAEvent
     real_events = db.query(SLAEvent).filter(SLAEvent.contract_id == contract_id).all()
     
@@ -51,16 +48,14 @@ def forecast_sla_violations(
                 "target_value": event.target_value
             })
     else:
-        # Fallback to synthetic if no real events (Demo Mode)
         sla_events = generate_synthetic_sla_events(contract_id)
     
     try:
         sla_data = forecaster.prepare_sla_data(sla_events)
         forecast = forecaster.forecast_violations_prophet(sla_data, min(days_ahead, 90))
     except Exception as e:
-        print(f"Forecasting error: {e}")
-        # Return empty forecast rather than crashing
-        forecast = {"predictions": []}
+        logger.error(f"SLA Forecasting error for contract {contract_id}: {e}", exc_info=True)
+        forecast = {"predictions": []} # Graceful fallback
     
     return {
         "contract_id": contract_id,
@@ -76,31 +71,23 @@ def forecast_vendor_reliability(
     vendor_id: int,
     days_ahead: int = 90,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user) # ✅ Security Injection
+    current_user: User = Depends(get_current_user)
 ):
     vendor = db.query(Vendor).filter(Vendor.id == vendor_id).first()
     
     if not vendor:
-        raise HTTPException(status_code=404, detail="Vendor not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Vendor not found")
 
-    # 🔒 SECURITY CHECK: Tenant Isolation
-    if current_user.role != "super_admin":
-        if vendor.company_id != current_user.company_id:
-            raise HTTPException(status_code=403, detail="Access denied to this vendor profile")
+    if current_user.role != "super_admin" and vendor.company_id != current_user.company_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied to this vendor profile")
     
-    # Fetch real performance data
-    from app.models.sla import VendorPerformance # Ensure this model exists or use a mock
-    # If VendorPerformance table doesn't exist yet, we default to synthetic
     performance_data = generate_synthetic_performance_data(vendor_id)
     
     try:
-        forecast = forecaster.forecast_vendor_reliability(
-            performance_data, 
-            min(days_ahead, 180)
-        )
+        forecast = forecaster.forecast_vendor_reliability(performance_data, min(days_ahead, 180))
         anomalies = forecaster.detect_anomalies(performance_data)
     except Exception as e:
-        print(f"Vendor forecasting error: {e}")
+        logger.error(f"Vendor forecasting error for vendor {vendor_id}: {e}", exc_info=True)
         forecast = []
         anomalies = []
     
@@ -119,33 +106,27 @@ def forecast_vendor_reliability(
 def predict_renewal_decision(
     contract_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user) # ✅ Security Injection
+    current_user: User = Depends(get_current_user)
 ):
-    """
-    AI-powered recommendation for contract renewal.
-    """
     contract = db.query(Contract).filter(Contract.id == contract_id).first()
     
     if not contract:
-        raise HTTPException(status_code=404, detail="Contract not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Contract not found")
 
-    # 🔒 SECURITY CHECK
-    if current_user.role != "super_admin":
-        if contract.company_id != current_user.company_id:
-            raise HTTPException(status_code=403, detail="Permission denied")
+    if current_user.role != "super_admin" and contract.company_id != current_user.company_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Permission denied")
     
     if not contract.end_date:
-        raise HTTPException(status_code=400, detail="Contract has no end date")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Contract has no end date")
     
     days_until_expiry = (contract.end_date - datetime.now().date()).days
-    
     vendor = db.query(Vendor).filter(Vendor.id == contract.vendor_id).first() if contract.vendor_id else None
     
-    recommendation = generate_renewal_recommendation(
-        contract, 
-        vendor, 
-        days_until_expiry
-    )
+    try:
+        recommendation = generate_renewal_recommendation(contract, vendor, days_until_expiry)
+    except Exception as e:
+        logger.error(f"Renewal recommendation error for contract {contract_id}: {e}", exc_info=True)
+        raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, "Failed to generate recommendation")
     
     return {
         "contract_id": contract_id,
@@ -155,7 +136,7 @@ def predict_renewal_decision(
         "days_until_expiry": days_until_expiry,
         "current_risk_level": contract.risk_level,
         "recommendation": recommendation,
-        "confidence_score": random.uniform(0.7, 0.95),
+        "confidence_score": round(random.uniform(0.7, 0.95), 2),
         "generated_on": datetime.now().isoformat()
     }
 
@@ -163,36 +144,35 @@ def predict_renewal_decision(
 def batch_contract_forecasts(
     contract_ids: List[int],
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user) # ✅ Security Injection
+    current_user: User = Depends(get_current_user)
 ):
-    """
-    Get forecasts for multiple contracts at once.
-    """
     results = []
     
-    for contract_id in contract_ids[:10]:  # Limit to 10 for performance
+    for contract_id in contract_ids[:10]:  
         contract = db.query(Contract).filter(Contract.id == contract_id).first()
         
-        # 🔒 SECURITY CHECK (Silent Skip)
-        # If user doesn't own the contract, just skip it in the batch results
         if contract and (current_user.role == "super_admin" or contract.company_id == current_user.company_id):
-            score = contract.risk_score or 50
-            days_until_expiry = (contract.end_date - datetime.now().date()).days if contract.end_date else 365
-            
-            priority = "HIGH"
-            if score < 30:
-                priority = "LOW"
-            elif score < 70:
-                priority = "MEDIUM"
-            
-            results.append({
-                "contract_id": contract_id,
-                "contract_name": contract.contract_name,
-                "risk_score": score,
-                "days_until_expiry": days_until_expiry,
-                "review_priority": priority,
-                "recommended_action": "RENEW" if score < 40 else "RENEGOTIATE" if score < 70 else "TERMINATE"
-            })
+            try:
+                score = contract.risk_score or 50
+                days_until_expiry = (contract.end_date - datetime.now().date()).days if contract.end_date else 365
+                
+                priority = "HIGH"
+                if score < 30:
+                    priority = "LOW"
+                elif score < 70:
+                    priority = "MEDIUM"
+                
+                results.append({
+                    "contract_id": contract_id,
+                    "contract_name": contract.contract_name,
+                    "risk_score": score,
+                    "days_until_expiry": days_until_expiry,
+                    "review_priority": priority,
+                    "recommended_action": "RENEW" if score < 40 else "RENEGOTIATE" if score < 70 else "TERMINATE"
+                })
+            except Exception as e:
+                logger.warning(f"Failed to process batch forecast for contract {contract_id}: {e}")
+                continue # Skip failing contracts rather than killing the batch
     
     return {
         "total_forecasted": len(results),

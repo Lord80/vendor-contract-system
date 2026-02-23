@@ -3,6 +3,7 @@ from typing import List, Dict, Any, Optional
 import json
 import pickle
 import os
+import shutil
 import faiss
 import re
 from datetime import datetime
@@ -11,10 +12,6 @@ import logging
 logger = logging.getLogger(__name__)
 
 class ContractSimilarityEngine:
-    """
-    Advanced similarity engine using FAISS (IndexFlatIP) for Cosine Similarity.
-    """
-    
     def __init__(self, model_name="all-MiniLM-L6-v2"):
         self.model_name = model_name
         self.model = None
@@ -55,27 +52,42 @@ class ContractSimilarityEngine:
                     self.index.reset()
                     self.index.add(embeddings.astype('float32'))
                 logger.info(f"✅ Loaded {len(self.clause_texts)} clauses into Vector DB")
-            except Exception:
-                pass
+            except Exception as e:
+                logger.error(f"Could not load existing embeddings: {e}")
 
     def _save_data(self):
+        """Safely saves FAISS data, avoiding Windows File Lock errors"""
         os.makedirs(self.data_dir, exist_ok=True)
         if not self.clause_texts: return
+        
         try:
             embeddings = self.model.encode(self.clause_texts)
             faiss.normalize_L2(embeddings)
             
-            np.save(self.embeddings_path + ".tmp", embeddings)
+            # 🛡️ THE FIX: Open a file object first so numpy doesn't silently add an extra ".npy"
+            with open(self.embeddings_path + ".tmp", 'wb') as f:
+                np.save(f, embeddings)
+                
             with open(self.metadata_path + ".tmp", 'w') as f:
                 json.dump(self.clause_metadata, f, indent=2)
             with open(self.texts_path + ".tmp", 'wb') as f:
                 pickle.dump(self.clause_texts, f)
                 
-            os.replace(self.embeddings_path + ".tmp", self.embeddings_path)
-            os.replace(self.metadata_path + ".tmp", self.metadata_path)
-            os.replace(self.texts_path + ".tmp", self.texts_path)
+            # Safe replace for Windows
+            def safe_replace(src, dst):
+                if os.path.exists(dst):
+                    try:
+                        os.remove(dst)
+                    except PermissionError:
+                        pass # Windows file lock fallback
+                shutil.move(src, dst)
+
+            safe_replace(self.embeddings_path + ".tmp", self.embeddings_path)
+            safe_replace(self.metadata_path + ".tmp", self.metadata_path)
+            safe_replace(self.texts_path + ".tmp", self.texts_path)
+            
         except Exception as e:
-            logger.error(f"❌ Failed to save Vector DB: {e}")
+            logger.error(f"❌ Failed to save Vector DB: {e}", exc_info=True)
 
     def add_clause_to_database(self, clause_text: str, clause_type: str, source_contract: str = "unknown", risk_level: str = "MEDIUM", tags: List[str] = None):
         self._initialize_model()
